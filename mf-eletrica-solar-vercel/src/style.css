@@ -1,0 +1,43 @@
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #171717;
+  color: white;
+}
+
+.container {
+  padding: 40px;
+}
+
+.header {
+  background: #facc15;
+  color: black;
+  padding: 30px;
+  border-radius: 20px;
+  margin-bottom: 30px;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: #242424;
+  padding: 25px;
+  border-radius: 20px;
+  border: 1px solid #333;
+}
+
+.panel {
+  margin-top: 30px;
+  background: #242424;
+  padding: 25px;
+  border-radius: 20px;
+}
+
+ul {
+  padding-left: 20px;
+}
