@@ -79,7 +79,7 @@ function App() {
     <div className="app">
       <header className="topo">
         <div className="topo-info">
-          <img src="/logo.jpg" className="logo" alt="MF Elétrica Solar" />
+          <img src="/logo.jpg" alt="MF Elétrica Solar" className="logo" style={{borderRadius:"18px"}} />  
           <div>
             <h1>MF Elétrica Solar</h1>
             <p>Sistema profissional com banco de dados online</p>
