@@ -84,7 +84,7 @@ function App() {
     <div className="appShell">
       <aside className="sidebar">
         <div className="brand">
-          <img src="/logo.jpg" alt="MF Elétrica Solar" />
+          <img src="/logo.png" alt="MF Elétrica Solar" />
           <div><strong>MF Solar</strong><span>Gestão Técnica</span></div>
         </div>
         <nav className="sideMenu">
