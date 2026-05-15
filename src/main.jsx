@@ -7,9 +7,13 @@ function App() {
   return (
     <div className="container">
       <header className="header">
-        <h1>MF Elétrica Solar</h1>
-        <p>Sistema Profissional de Monitoramento</p>
-      </header>
+  <img src="/logo.png" alt="MF Elétrica Solar" className="logo" />
+
+  <div>
+    <h1>MF Elétrica Solar</h1>
+    <p>Sistema Profissional de Monitoramento</p>
+  </div>
+</header>
 
       <div className="cards">
         <div className="card">
