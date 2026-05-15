@@ -41,3 +41,13 @@ body {
 ul {
   padding-left: 20px;
 }
+.header {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.logo {
+  width: 120px;
+  border-radius: 15px;
+}
