@@ -1,4 +1,4 @@
-
+import logo from "../logo.jpg";
 import React from "react";
 import ReactDOM from "react-dom/client";
 import "./style.css";
@@ -7,7 +7,7 @@ function App() {
   return (
     <div className="container">
       <header className="header">
-  <img src="/logo.jpg" alt="MF Elétrica Solar" className="logo" />
+ <img src={logo} alt="MF Elétrica Solar" className="logo" />
 
   <div>
     <h1>MF Elétrica Solar</h1>
