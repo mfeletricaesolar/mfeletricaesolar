@@ -7,7 +7,7 @@ function App() {
   return (
     <div className="container">
       <header className="header">
-  <img src="/logo.png" alt="MF Elétrica Solar" className="logo" />
+  <img src="/logo.jpg" alt="MF Elétrica Solar" className="logo" />
 
   <div>
     <h1>MF Elétrica Solar</h1>
