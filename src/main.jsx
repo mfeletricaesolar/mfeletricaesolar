@@ -1,3 +1,4 @@
+import logo from "../logo.png";
 import React, { useEffect, useMemo, useState } from 'react'
 import ReactDOM from 'react-dom/client'
 import { AlertTriangle, CalendarDays, CheckCircle2, ClipboardList, Database, FileText, Gauge, Home, Plus, RefreshCw, Search, Trash2, Users, Zap } from 'lucide-react'
