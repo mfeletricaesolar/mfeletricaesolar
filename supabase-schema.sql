@@ -1,1 +1,0 @@
--- Banco já configurado anteriormente.
