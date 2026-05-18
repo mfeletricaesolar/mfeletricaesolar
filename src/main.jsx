@@ -11,23 +11,55 @@ function editar(t,i){setEdit({tabela:t,id:i.id});setArq(null);if(t==="alertas"){
 function cancelar(){setEdit(null);setArq(null);setAlerta(VA);setCliente(VC);setServ(VG);setRel(VR)}
 async function stat(id,s){await supabase.from("alertas").update({status:s}).eq("id",id);carregar()}
 async function logoBase64(){try{let r=await fetch("/logo.png"),b=await r.blob();return await new Promise(ok=>{let fr=new FileReader();fr.onload=()=>ok(fr.result);fr.readAsDataURL(b)})}catch(e){return null}}
-async function pdf(tipo,x){let d=new jsPDF("p","mm","a4"),logo=await logoBase64(),yellow=[250,204,21],black=[7,7,7],gray=[230,230,230],y=84;
+async function pdf(tipo,x){
+let d=new jsPDF("p","mm","a4"),logo=await logoBase64(),yellow=[250,204,21],black=[5,5,5],gray=[230,230,230],y=82;
 function txt(t,xp,yp,size=11,bold=false,color=[0,0,0]){d.setTextColor(...color);d.setFont("helvetica",bold?"bold":"normal");d.setFontSize(size);d.text(String(t||"-"),xp,yp)}
-function line(yp){d.setDrawColor(...gray);d.setLineWidth(.35);d.line(12,yp,198,yp)}
-function pill(t,xp,yp){d.setFillColor(...yellow);d.roundedRect(xp,yp-5,22,8,2,2,"F");txt(t,xp+4,yp,10,false,[0,0,0])}
-function row(label,value,badge=false){txt(label+":",18,y,11,true);if(badge)pill(value||"-",56,y);else txt(value||"-",56,y,11,false);line(y+8);y+=16}
-d.setFillColor(...yellow);d.rect(0,0,210,8,"F");d.setFillColor(...black);d.roundedRect(0,0,128,48,0,0,"F");d.setFillColor(...black);d.triangle(120,0,210,0,170,48,"F");d.setFillColor(...yellow);d.rect(128,43,82,5,"F");
-if(logo){try{d.addImage(logo,"PNG",10,8,28,20)}catch(e){}}
-txt("MF Elétrica e Solar",44,20,20,true,[255,255,255]);txt("Gestão Técnica",44,31,12,false,yellow);
-txt("(91) 98334-8637",156,14,10,false,[255,255,255]);txt("contato@mf-eletrica.com",156,24,10,false,[255,255,255]);txt("Capanema - PA",156,34,10,false,[255,255,255]);
-d.setFillColor(...yellow);d.circle(17,64,4,"F");txt(tipo.toUpperCase(),28,67,17,true,[0,0,0]);txt("Gerado em: "+new Date().toLocaleString("pt-BR"),146,66,10,false,[0,0,0]);d.setDrawColor(...yellow);d.setLineWidth(.5);d.line(12,74,198,74);
+function line(yp){d.setDrawColor(...gray);d.setLineWidth(.35);d.line(10,yp,200,yp)}
+function pill(t,xp,yp,w=24){d.setFillColor(...yellow);d.roundedRect(xp,yp-5,w,8,2,2,"F");txt(t,xp+4,yp,10,false,[0,0,0])}
+function row(label,value,badge=false){txt(label+":",14,y,10,true);if(badge)pill(value||"-",52,y,String(value||"-").length>8?30:24);else txt(value||"-",52,y,10,false);line(y+7);y+=15}
+
+/* Cabeçalho preto premium sem bloco de contato */
+d.setFillColor(...black);
+d.rect(0,0,210,45,"F");
+d.setFillColor(...yellow);
+d.rect(120,40,90,5,"F");
+d.setFillColor(...yellow);
+d.roundedRect(112,38,18,8,3,3,"F");
+
+if(logo){try{d.addImage(logo,"PNG",7,8,30,17)}catch(e){}}
+txt("MF Elétrica e Solar",45,18,17,true,[255,255,255]);
+txt("Gestão Técnica",45,29,10,false,yellow);
+
+/* Título e data */
+d.setFillColor(...yellow);
+d.circle(14,60,4,"F");
+txt("⚠",12.6,61.5,8,true,[0,0,0]);
+txt(tipo.toUpperCase(),24,63,16,true,[0,0,0]);
+txt("Gerado em: "+new Date().toLocaleString("pt-BR"),145,62,8,false,[0,0,0]);
+d.setDrawColor(...yellow);
+d.setLineWidth(.5);
+d.line(10,70,200,70);
+
+/* Dados */
 if(tipo==="Alerta Técnico"){row("Cliente",x.cliente);row("Painel",x.painel);row("Prioridade",x.prioridade,true);row("Status",x.status,true);row("Responsável",x.responsavel);row("Situação",x.situacao);row("Observação",x.observacao)}
 if(tipo==="Tarefa Técnica"){row("Local/Cliente",x.local);row("Data",x.data);row("Horário",x.horario);row("Equipe",x.equipe);row("Status",x.status,true);row("Serviço",x.servico)}
 if(tipo==="Relatório Técnico"){row("Cliente",x.cliente);row("Dia",x.dia);row("Responsável",x.responsavel);row("Status",x.status,true);row("Atividade",x.atividade);row("Resultado",x.resultado)}
-if(x?.arquivo_url){y+=4;txt("Anexo:",18,y,11,true);d.setTextColor(0,91,180);d.textWithLink("Abrir anexo enviado",56,y,{url:x.arquivo_url});d.setTextColor(0,0,0)}
-d.setDrawColor(...yellow);d.setLineWidth(.5);d.line(12,250,198,250);
-txt("Compromisso com qualidade,",24,263,9,false,[0,0,0]);txt("segurança e eficiência.",24,269,9,false,[0,0,0]);txt("MF Elétrica e Solar",86,263,11,true,[0,0,0]);txt("Soluções inteligentes em energia",78,270,9,false,[0,0,0]);txt("Relatório gerado automaticamente",150,263,9,false,[0,0,0]);txt("pelo sistema.",150,269,9,false,[0,0,0]);
-d.save(tipo.toLowerCase().replaceAll(" ","-")+"-"+Date.now()+".pdf")}
+if(x?.arquivo_url){y+=3;txt("Anexo:",14,y,10,true);d.setTextColor(0,91,180);d.textWithLink("Abrir anexo enviado",52,y,{url:x.arquivo_url});d.setTextColor(0,0,0)}
+
+/* Rodapé premium */
+d.setDrawColor(...yellow);
+d.setLineWidth(.45);
+d.line(10,250,200,250);
+d.setFillColor(255,255,255);
+txt("Compromisso com qualidade,",24,263,8,false,[0,0,0]);
+txt("segurança e eficiência.",24,268,8,false,[0,0,0]);
+txt("MF Elétrica e Solar",88,263,10,true,[0,0,0]);
+txt("Soluções inteligentes em energia",77,269,8,false,[0,0,0]);
+txt("Relatório gerado automaticamente",151,263,8,false,[0,0,0]);
+txt("pelo sistema.",151,268,8,false,[0,0,0]);
+
+d.save(tipo.toLowerCase().replaceAll(" ","-")+"-"+Date.now()+".pdf")
+}
 const filtrados=useMemo(()=>alertas.filter(a=>`${a.cliente} ${a.painel} ${a.situacao}`.toLowerCase().includes(busca.toLowerCase())),[alertas,busca]),pend=alertas.filter(a=>a.status!=="Resolvido").length,res=alertas.filter(a=>a.status==="Resolvido").length;
 return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={carregar}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
 {aba==="dashboard"&&<><section className="metrics"><Card t="Alertas pendentes" v={pend} d="Precisam de acompanhamento"/><Card t="Alertas resolvidos" v={res} d="Ocorrências finalizadas"/><Card t="Clientes cadastrados" v={clientes.length} d="Base ativa no sistema"/><Card t="Serviços na agenda" v={agenda.length} d="Visitas e tarefas"/></section><section className="grid"><Panel title="Ocorrências recentes">{alertas.slice(0,5).map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.status}`}/>)}</Panel><Panel title="Painéis monitorados"><div className="chips">{PAINEIS.map(p=><span key={p}>{p}</span>)}</div></Panel></section></>}

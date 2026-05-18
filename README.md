@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Versão com PDF Premium corporativo.
+Versão com PDF premium limpo, sem contatos no cabeçalho.
