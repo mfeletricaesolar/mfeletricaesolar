@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Versão com editar, PDF e upload.
+Versão com logo nos PDFs, editar, PDF e upload.
