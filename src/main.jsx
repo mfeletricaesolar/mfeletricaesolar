@@ -1,175 +1,29 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import ReactDOM from 'react-dom/client';
-import { supabase } from './supabase';
-import './style.css';
-
-const PAINEIS = ['SOLARMAN', 'SOLIS', 'GOODWE', 'RENAC', 'ELEKEEPER', 'AUXSOL'];
-const STATUS = ['Pendente', 'Em análise', 'Acompanhar', 'Resolvido'];
-const PRIORIDADES = ['Baixa', 'Média', 'Alta', 'Urgente'];
-
-function App() {
-  const [aba, setAba] = useState('dashboard');
-  const [alertas, setAlertas] = useState([]);
-  const [clientes, setClientes] = useState([]);
-  const [agenda, setAgenda] = useState([]);
-  const [relatorios, setRelatorios] = useState([]);
-  const [busca, setBusca] = useState('');
-  const [msg, setMsg] = useState('');
-  const [load, setLoad] = useState(false);
-
-  const [alerta, setAlerta] = useState({cliente:'', painel:'SOLARMAN', situacao:'', prioridade:'Média', status:'Pendente', responsavel:'', observacao:''});
-  const [cliente, setCliente] = useState({nome:'', contato:'', cidade:'', painel:'SOLARMAN', potencia:'', status:'Normal'});
-  const [servico, setServico] = useState({data:'', horario:'', local:'', servico:'', equipe:'', status:'Agendado'});
-  const [relatorio, setRelatorio] = useState({dia:'', cliente:'', atividade:'', resultado:'', responsavel:'', status:'Bem-sucedido'});
-
-  async function carregar() {
-    setLoad(true);
-    const [a,c,g,r] = await Promise.all([
-      supabase.from('alertas').select('*').order('created_at', {ascending:false}),
-      supabase.from('clientes').select('*').order('created_at', {ascending:false}),
-      supabase.from('agenda').select('*').order('data', {ascending:true}),
-      supabase.from('relatorios').select('*').order('created_at', {ascending:false}),
-    ]);
-    if (a.error || c.error || g.error || r.error) setMsg('Erro ao conectar no Supabase. Confira as variáveis na Vercel.');
-    else {
-      setAlertas(a.data || []); setClientes(c.data || []); setAgenda(g.data || []); setRelatorios(r.data || []); setMsg('');
-    }
-    setLoad(false);
-  }
-
-  useEffect(() => { carregar(); }, []);
-
-  async function salvar(tabela, dados, limpar) {
-    const { error } = await supabase.from(tabela).insert([dados]);
-    if (error) return setMsg('Erro ao salvar: ' + error.message);
-    limpar();
-    setMsg('Salvo com sucesso.');
-    carregar();
-  }
-
-  async function remover(tabela, id) {
-    if (!confirm('Deseja excluir?')) return;
-    const { error } = await supabase.from(tabela).delete().eq('id', id);
-    if (error) return setMsg('Erro ao excluir: ' + error.message);
-    carregar();
-  }
-
-  async function mudarStatus(id, status) {
-    await supabase.from('alertas').update({status}).eq('id', id);
-    carregar();
-  }
-
-  const filtrados = useMemo(() => alertas.filter(a => `${a.cliente} ${a.painel} ${a.situacao}`.toLowerCase().includes(busca.toLowerCase())), [alertas,busca]);
-  const pend = alertas.filter(a => a.status !== 'Resolvido').length;
-  const res = alertas.filter(a => a.status === 'Resolvido').length;
-
-  return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <img src="/logo.png" alt="MF Elétrica e Solar"/>
-          <div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div>
-        </div>
-        <Menu aba={aba} setAba={setAba}/>
-        <div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div>
-      </aside>
-
-      <main className="main">
-        <section className="hero">
-          <div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div>
-          <button onClick={carregar}>↻ Atualizar</button>
-        </section>
-
-        {msg && <div className="msg">{msg}</div>}
-        {load && <div className="msg">Carregando...</div>}
-
-        {aba === 'dashboard' && <>
-          <section className="metrics">
-            <Card t="Alertas pendentes" v={pend} d="Precisam de acompanhamento"/>
-            <Card t="Alertas resolvidos" v={res} d="Ocorrências finalizadas"/>
-            <Card t="Clientes cadastrados" v={clientes.length} d="Base ativa no sistema"/>
-            <Card t="Serviços na agenda" v={agenda.length} d="Visitas e tarefas"/>
-          </section>
-          <section className="grid">
-            <div className="panel big">
-              <div className="head"><div><h2>Ocorrências recentes</h2><p>Últimos alertas registrados no sistema.</p></div><button onClick={()=>setAba('alertas')}>+ Novo alerta</button></div>
-              <ListaVazia ok={alertas.length === 0} texto="Nenhum alerta registrado ainda."/>
-              {alertas.slice(0,5).map(a => <Item key={a.id} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.status}`}/>)}
-            </div>
-            <div className="panel"><h2>Painéis monitorados</h2><div className="chips">{PAINEIS.map(p => <span key={p}>{p}</span>)}</div></div>
-          </section>
-        </>}
-
-        {aba === 'alertas' && <Area>
-          <Form title="Novo alerta" onSubmit={(e)=>{e.preventDefault(); salvar('alertas', alerta, ()=>setAlerta({cliente:'', painel:'SOLARMAN', situacao:'', prioridade:'Média', status:'Pendente', responsavel:'', observacao:''}))}}>
-            <Campo label="Cliente" value={alerta.cliente} onChange={v=>setAlerta({...alerta, cliente:v})} required/>
-            <Select label="Painel" value={alerta.painel} options={PAINEIS} onChange={v=>setAlerta({...alerta, painel:v})}/>
-            <Texto label="Situação" value={alerta.situacao} onChange={v=>setAlerta({...alerta, situacao:v})} required/>
-            <Select label="Prioridade" value={alerta.prioridade} options={PRIORIDADES} onChange={v=>setAlerta({...alerta, prioridade:v})}/>
-            <Select label="Status" value={alerta.status} options={STATUS} onChange={v=>setAlerta({...alerta, status:v})}/>
-            <Campo label="Responsável" value={alerta.responsavel} onChange={v=>setAlerta({...alerta, responsavel:v})}/>
-            <Texto label="Observação" value={alerta.observacao} onChange={v=>setAlerta({...alerta, observacao:v})}/>
-          </Form>
-          <div className="panel">
-            <div className="head"><div><h2>Alertas registrados</h2><p>Pesquise e atualize o status.</p></div><input placeholder="Buscar..." value={busca} onChange={e=>setBusca(e.target.value)}/></div>
-            {filtrados.map(a => <div className="item" key={a.id}><div><b>{a.cliente}</b><p>{a.situacao}</p><small>{a.painel} • {a.prioridade} • {a.responsavel}</small></div><div className="actions"><select value={a.status} onChange={e=>mudarStatus(a.id,e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select><button className="danger" onClick={()=>remover('alertas',a.id)}>Excluir</button></div></div>)}
-            <ListaVazia ok={filtrados.length === 0} texto="Nenhum alerta encontrado."/>
-          </div>
-        </Area>}
-
-        {aba === 'clientes' && <Area>
-          <Form title="Novo cliente" onSubmit={(e)=>{e.preventDefault(); salvar('clientes', cliente, ()=>setCliente({nome:'', contato:'', cidade:'', painel:'SOLARMAN', potencia:'', status:'Normal'}))}}>
-            <Campo label="Nome" value={cliente.nome} onChange={v=>setCliente({...cliente,nome:v})} required/>
-            <Campo label="Contato" value={cliente.contato} onChange={v=>setCliente({...cliente,contato:v})}/>
-            <Campo label="Cidade/Bairro" value={cliente.cidade} onChange={v=>setCliente({...cliente,cidade:v})}/>
-            <Select label="Painel" value={cliente.painel} options={PAINEIS} onChange={v=>setCliente({...cliente,painel:v})}/>
-            <Campo label="Potência" value={cliente.potencia} onChange={v=>setCliente({...cliente,potencia:v})}/>
-            <Campo label="Status" value={cliente.status} onChange={v=>setCliente({...cliente,status:v})}/>
-          </Form>
-          <PainelLista title="Clientes" items={clientes} empty="Nenhum cliente cadastrado.">{c=><Item key={c.id} title={c.nome} text={`${c.cidade || ''} ${c.contato || ''}`} sub={`${c.painel} • ${c.potencia || 'Sem potência'} • ${c.status}`} onDelete={()=>remover('clientes',c.id)}/>}</PainelLista>
-        </Area>}
-
-        {aba === 'agenda' && <Area>
-          <Form title="Novo serviço" onSubmit={(e)=>{e.preventDefault(); salvar('agenda', servico, ()=>setServico({data:'', horario:'', local:'', servico:'', equipe:'', status:'Agendado'}))}}>
-            <Campo label="Data" type="date" value={servico.data} onChange={v=>setServico({...servico,data:v})} required/>
-            <Campo label="Horário" type="time" value={servico.horario} onChange={v=>setServico({...servico,horario:v})}/>
-            <Campo label="Local/Cliente" value={servico.local} onChange={v=>setServico({...servico,local:v})} required/>
-            <Texto label="Serviço a fazer" value={servico.servico} onChange={v=>setServico({...servico,servico:v})} required/>
-            <Campo label="Equipe/Responsável" value={servico.equipe} onChange={v=>setServico({...servico,equipe:v})}/>
-            <Campo label="Status" value={servico.status} onChange={v=>setServico({...servico,status:v})}/>
-          </Form>
-          <PainelLista title="Agenda" items={agenda} empty="Nenhum serviço agendado.">{s=><Item key={s.id} title={s.local} text={s.servico} sub={`${s.data} ${s.horario || ''} • ${s.equipe || ''} • ${s.status}`} onDelete={()=>remover('agenda',s.id)}/>}</PainelLista>
-        </Area>}
-
-        {aba === 'relatorios' && <Area>
-          <Form title="Novo relatório" onSubmit={(e)=>{e.preventDefault(); salvar('relatorios', relatorio, ()=>setRelatorio({dia:'', cliente:'', atividade:'', resultado:'', responsavel:'', status:'Bem-sucedido'}))}}>
-            <Campo label="Dia" type="date" value={relatorio.dia} onChange={v=>setRelatorio({...relatorio,dia:v})} required/>
-            <Campo label="Cliente" value={relatorio.cliente} onChange={v=>setRelatorio({...relatorio,cliente:v})} required/>
-            <Texto label="Atividade realizada" value={relatorio.atividade} onChange={v=>setRelatorio({...relatorio,atividade:v})} required/>
-            <Texto label="Resultado" value={relatorio.resultado} onChange={v=>setRelatorio({...relatorio,resultado:v})} required/>
-            <Campo label="Responsável" value={relatorio.responsavel} onChange={v=>setRelatorio({...relatorio,responsavel:v})}/>
-            <Campo label="Status" value={relatorio.status} onChange={v=>setRelatorio({...relatorio,status:v})}/>
-          </Form>
-          <PainelLista title="Relatórios" items={relatorios} empty="Nenhum relatório registrado.">{r=><Item key={r.id} title={r.cliente} text={r.atividade} sub={`${r.dia} • ${r.responsavel || ''} • ${r.status}`} onDelete={()=>remover('relatorios',r.id)}/>}</PainelLista>
-        </Area>}
-      </main>
-    </div>
-  );
-}
-
-function Menu({aba,setAba}) {
-  const items = [['dashboard','Dashboard'],['alertas','Alertas'],['clientes','Clientes'],['agenda','Agenda'],['relatorios','Relatórios']];
-  return <nav className="menu">{items.map(([id,n])=><button key={id} className={aba===id?'active':''} onClick={()=>setAba(id)}>{n}</button>)}</nav>
-}
-
-function Card({t,v,d}) { return <div className="card"><p>{t}</p><h2>{v}</h2><span>{d}</span></div> }
-function Area({children}) { return <section className="area">{children}</section> }
-function Form({title,onSubmit,children}) { return <form className="form panel" onSubmit={onSubmit}><h2>{title}</h2>{children}<button className="submit">Salvar</button></form> }
-function Campo({label,value,onChange,type='text',required=false}) { return <label><span>{label}</span><input type={type} required={required} value={value} onChange={e=>onChange(e.target.value)}/></label> }
-function Texto({label,value,onChange,required=false}) { return <label><span>{label}</span><textarea required={required} value={value} onChange={e=>onChange(e.target.value)}/></label> }
-function Select({label,value,options,onChange}) { return <label><span>{label}</span><select value={value} onChange={e=>onChange(e.target.value)}>{options.map(o=><option key={o}>{o}</option>)}</select></label> }
-function Item({title,text,sub,onDelete}) { return <div className="item"><div><b>{title}</b><p>{text}</p><small>{sub}</small></div>{onDelete && <button className="danger" onClick={onDelete}>Excluir</button>}</div> }
-function PainelLista({title,items,empty,children}) { return <div className="panel"><h2>{title}</h2>{items.map(children)}<ListaVazia ok={items.length===0} texto={empty}/></div> }
-function ListaVazia({ok,texto}) { return ok ? <div className="empty">{texto}</div> : null }
-
-ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+import React,{useEffect,useMemo,useState}from"react";import ReactDOM from"react-dom/client";import{jsPDF}from"jspdf";import{supabase}from"./supabase";import"./style.css";
+const PAINEIS=["SOLARMAN","SOLIS","GOODWE","RENAC","ELEKEEPER","AUXSOL"],STATUS=["Pendente","Em análise","Acompanhar","Resolvido"],PRIOR=["Baixa","Média","Alta","Urgente"];
+const VA={cliente:"",painel:"SOLARMAN",situacao:"",prioridade:"Média",status:"Pendente",responsavel:"",observacao:"",arquivo_url:""},VC={nome:"",contato:"",cidade:"",painel:"SOLARMAN",potencia:"",status:"Normal"},VG={data:"",horario:"",local:"",servico:"",equipe:"",status:"Agendado",arquivo_url:""},VR={dia:"",cliente:"",atividade:"",resultado:"",responsavel:"",status:"Bem-sucedido",arquivo_url:""};
+function App(){const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR);
+async function carregar(){let[a,c,g,r]=await Promise.all([supabase.from("alertas").select("*").order("created_at",{ascending:false}),supabase.from("clientes").select("*").order("created_at",{ascending:false}),supabase.from("agenda").select("*").order("data",{ascending:true}),supabase.from("relatorios").select("*").order("created_at",{ascending:false})]);if(a.error||c.error||g.error||r.error)setMsg("Erro ao carregar dados.");else{setAlertas(a.data||[]);setClientes(c.data||[]);setAgenda(g.data||[]);setRelatorios(r.data||[]);setMsg("")}}
+useEffect(()=>{carregar()},[]);
+async function upload(t){if(!arq)return"";let ext=arq.name.split(".").pop(),nome=`${t}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;let{error}=await supabase.storage.from("anexos-mf").upload(nome,arq);if(error){setMsg("Erro no upload: "+error.message);return""}return supabase.storage.from("anexos-mf").getPublicUrl(nome).data.publicUrl}
+async function salvar(t,d,limpar){let obj={...d},url=await upload(t);if(url)obj.arquivo_url=url;let resp=edit?.tabela===t?await supabase.from(t).update(obj).eq("id",edit.id):await supabase.from(t).insert([obj]);if(resp.error)return setMsg("Erro ao salvar: "+resp.error.message);setEdit(null);setArq(null);limpar();setMsg(edit?"Alteração salva.":"Salvo com sucesso.");carregar()}
+async function del(t,id){if(!confirm("Excluir?"))return;await supabase.from(t).delete().eq("id",id);carregar()}
+function editar(t,i){setEdit({tabela:t,id:i.id});setArq(null);if(t==="alertas"){setAlerta({...VA,...i});setAba("alertas")}if(t==="clientes"){setCliente({...VC,...i});setAba("clientes")}if(t==="agenda"){setServ({...VG,...i});setAba("agenda")}if(t==="relatorios"){setRel({...VR,...i});setAba("relatorios")}scrollTo({top:0,behavior:"smooth"})}
+function cancelar(){setEdit(null);setArq(null);setAlerta(VA);setCliente(VC);setServ(VG);setRel(VR)}
+async function stat(id,s){await supabase.from("alertas").update({status:s}).eq("id",id);carregar()}
+function pdf(tipo,x){let d=new jsPDF(),y=20,linha=(a,b)=>{d.setFont("helvetica","bold");d.text(a+":",20,y);d.setFont("helvetica","normal");d.text(d.splitTextToSize(String(b||"-"),130),60,y);y+=12};d.setFont("helvetica","bold");d.setFontSize(18);d.text("MF Elétrica e Solar",20,y);y+=12;d.setFontSize(14);d.text(tipo,20,y);y+=16;d.setFontSize(11);d.setFont("helvetica","normal");d.text("Gerado em: "+new Date().toLocaleDateString("pt-BR"),20,y);y+=16;if(tipo==="Alerta Técnico"){linha("Cliente",x.cliente);linha("Painel",x.painel);linha("Prioridade",x.prioridade);linha("Status",x.status);linha("Responsável",x.responsavel);linha("Situação",x.situacao);linha("Observação",x.observacao)}if(tipo==="Tarefa Técnica"){linha("Local/Cliente",x.local);linha("Data",x.data);linha("Horário",x.horario);linha("Equipe",x.equipe);linha("Status",x.status);linha("Serviço",x.servico)}if(tipo==="Relatório Técnico"){linha("Cliente",x.cliente);linha("Dia",x.dia);linha("Responsável",x.responsavel);linha("Status",x.status);linha("Atividade",x.atividade);linha("Resultado",x.resultado)}d.setFontSize(9);d.text("Documento gerado automaticamente pelo sistema MF Elétrica e Solar.",20,282);d.save(tipo.toLowerCase().replaceAll(" ","-")+"-"+Date.now()+".pdf")}
+const filtrados=useMemo(()=>alertas.filter(a=>`${a.cliente} ${a.painel} ${a.situacao}`.toLowerCase().includes(busca.toLowerCase())),[alertas,busca]),pend=alertas.filter(a=>a.status!=="Resolvido").length,res=alertas.filter(a=>a.status==="Resolvido").length;
+return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={carregar}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
+{aba==="dashboard"&&<><section className="metrics"><Card t="Alertas pendentes" v={pend} d="Precisam de acompanhamento"/><Card t="Alertas resolvidos" v={res} d="Ocorrências finalizadas"/><Card t="Clientes cadastrados" v={clientes.length} d="Base ativa no sistema"/><Card t="Serviços na agenda" v={agenda.length} d="Visitas e tarefas"/></section><section className="grid"><Panel title="Ocorrências recentes">{alertas.slice(0,5).map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.status}`}/>)}</Panel><Panel title="Painéis monitorados"><div className="chips">{PAINEIS.map(p=><span key={p}>{p}</span>)}</div></Panel></section></>}
+{aba==="alertas"&&<Area><Form title={edit?.tabela==="alertas"?"Editar alerta":"Novo alerta"} edit={edit?.tabela==="alertas"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("alertas",alerta,()=>setAlerta(VA))}}><Campo l="Cliente" v={alerta.cliente} s={v=>setAlerta({...alerta,cliente:v})}/><Select l="Painel" v={alerta.painel} o={PAINEIS} s={v=>setAlerta({...alerta,painel:v})}/><Texto l="Situação" v={alerta.situacao} s={v=>setAlerta({...alerta,situacao:v})}/><Select l="Prioridade" v={alerta.prioridade} o={PRIOR} s={v=>setAlerta({...alerta,prioridade:v})}/><Select l="Status" v={alerta.status} o={STATUS} s={v=>setAlerta({...alerta,status:v})}/><Campo l="Responsável" v={alerta.responsavel} s={v=>setAlerta({...alerta,responsavel:v})}/><Texto l="Observação" v={alerta.observacao} s={v=>setAlerta({...alerta,observacao:v})}/></Form><Panel title="Alertas registrados"><input placeholder="Buscar..." value={busca} onChange={e=>setBusca(e.target.value)}/>{filtrados.map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.prioridade} • ${a.status}`} extra={<><select value={a.status} onChange={e=>stat(a.id,e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select><button onClick={()=>pdf("Alerta Técnico",a)}>PDF</button><button onClick={()=>editar("alertas",a)}>Editar</button><button className="danger" onClick={()=>del("alertas",a.id)}>Excluir</button></>}/>)}</Panel></Area>}
+{aba==="clientes"&&<Area><Form title={edit?.tabela==="clientes"?"Editar cliente":"Novo cliente"} edit={edit?.tabela==="clientes"} cancel={cancelar} noFile submit={e=>{e.preventDefault();salvar("clientes",cliente,()=>setCliente(VC))}}><Campo l="Nome" v={cliente.nome} s={v=>setCliente({...cliente,nome:v})}/><Campo l="Contato" v={cliente.contato} s={v=>setCliente({...cliente,contato:v})}/><Campo l="Cidade/Bairro" v={cliente.cidade} s={v=>setCliente({...cliente,cidade:v})}/><Select l="Painel" v={cliente.painel} o={PAINEIS} s={v=>setCliente({...cliente,painel:v})}/><Campo l="Potência" v={cliente.potencia} s={v=>setCliente({...cliente,potencia:v})}/><Campo l="Status" v={cliente.status} s={v=>setCliente({...cliente,status:v})}/></Form><Panel title="Clientes">{clientes.map(c=><Item key={c.id} title={c.nome} text={c.cidade||""} sub={`${c.painel} • ${c.status}`} extra={<><button onClick={()=>editar("clientes",c)}>Editar</button><button className="danger" onClick={()=>del("clientes",c.id)}>Excluir</button></>}/>)}</Panel></Area>}
+{aba==="agenda"&&<Area><Form title={edit?.tabela==="agenda"?"Editar tarefa":"Nova tarefa"} edit={edit?.tabela==="agenda"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("agenda",serv,()=>setServ(VG))}}><Campo l="Data" type="date" v={serv.data} s={v=>setServ({...serv,data:v})}/><Campo l="Horário" type="time" v={serv.horario} s={v=>setServ({...serv,horario:v})}/><Campo l="Local/Cliente" v={serv.local} s={v=>setServ({...serv,local:v})}/><Texto l="Serviço a fazer" v={serv.servico} s={v=>setServ({...serv,servico:v})}/><Campo l="Equipe/Responsável" v={serv.equipe} s={v=>setServ({...serv,equipe:v})}/><Campo l="Status" v={serv.status} s={v=>setServ({...serv,status:v})}/></Form><Panel title="Agenda">{agenda.map(s=><Item key={s.id} x={s} title={s.local} text={s.servico} sub={`${s.data} ${s.horario||""} • ${s.status}`} extra={<><button onClick={()=>pdf("Tarefa Técnica",s)}>PDF</button><button onClick={()=>editar("agenda",s)}>Editar</button><button className="danger" onClick={()=>del("agenda",s.id)}>Excluir</button></>}/>)}</Panel></Area>}
+{aba==="relatorios"&&<Area><Form title={edit?.tabela==="relatorios"?"Editar relatório":"Novo relatório"} edit={edit?.tabela==="relatorios"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("relatorios",rel,()=>setRel(VR))}}><Campo l="Dia" type="date" v={rel.dia} s={v=>setRel({...rel,dia:v})}/><Campo l="Cliente" v={rel.cliente} s={v=>setRel({...rel,cliente:v})}/><Texto l="Atividade realizada" v={rel.atividade} s={v=>setRel({...rel,atividade:v})}/><Texto l="Resultado" v={rel.resultado} s={v=>setRel({...rel,resultado:v})}/><Campo l="Responsável" v={rel.responsavel} s={v=>setRel({...rel,responsavel:v})}/><Campo l="Status" v={rel.status} s={v=>setRel({...rel,status:v})}/></Form><Panel title="Relatórios">{relatorios.map(r=><Item key={r.id} x={r} title={r.cliente} text={r.atividade} sub={`${r.dia} • ${r.status}`} extra={<><button onClick={()=>pdf("Relatório Técnico",r)}>PDF</button><button onClick={()=>editar("relatorios",r)}>Editar</button><button className="danger" onClick={()=>del("relatorios",r.id)}>Excluir</button></>}/>)}</Panel></Area>}</main></div>}
+function Card(p){return <div className="card"><p>{p.t}</p><h2>{p.v}</h2><span>{p.d}</span></div>}
+function Panel({title,children}){return <div className="panel"><h2>{title}</h2>{children}</div>}
+function Area({children}){return <section className="area">{children}</section>}
+function Form({title,submit,children,edit,cancel,file,noFile}){return <form className="form panel" onSubmit={submit}><h2>{title}</h2>{children}{!noFile&&<label><span>Anexo/foto</span><input type="file" onChange={e=>file(e.target.files[0])}/></label>}<div className="actions"><button className="submit">{edit?"Salvar alteração":"Salvar"}</button>{edit&&<button type="button" onClick={cancel}>Cancelar</button>}</div></form>}
+function Campo({l,v,s,type="text"}){return <label><span>{l}</span><input type={type} value={v||""} onChange={e=>s(e.target.value)}/></label>}
+function Texto({l,v,s}){return <label><span>{l}</span><textarea value={v||""} onChange={e=>s(e.target.value)}/></label>}
+function Select({l,v,o,s}){return <label><span>{l}</span><select value={v||""} onChange={e=>s(e.target.value)}>{o.map(x=><option key={x}>{x}</option>)}</select></label>}
+function Item({title,text,sub,extra,x}){return <div className="item"><div><b>{title}</b><p>{text}</p><small>{sub}</small>{x?.arquivo_url&&<a href={x.arquivo_url} target="_blank">Abrir anexo</a>}</div><div className="actions">{extra}</div></div>}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
