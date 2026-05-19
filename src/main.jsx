@@ -33,7 +33,6 @@ txt("Gestão Técnica",45,29,10,false,yellow);
 /* Título e data */
 d.setFillColor(...yellow);
 d.circle(14,60,4,"F");
-txt("!",12.6,61.5,8,true,[0,0,0]);
 txt(tipo.toUpperCase(),24,63,16,true,[0,0,0]);
 txt("Gerado em: "+new Date().toLocaleString("pt-BR"),145,62,8,false,[0,0,0]);
 d.setDrawColor(...yellow);
