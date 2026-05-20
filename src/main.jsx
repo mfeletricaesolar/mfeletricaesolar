@@ -33,6 +33,7 @@ txt("Gestão Técnica",45,29,10,false,yellow);
 /* Título e data */
 d.setFillColor(...yellow);
 d.circle(14,60,4,"F");
+txt("⚠",12.6,61.5,8,true,[0,0,0]);
 txt(tipo.toUpperCase(),24,63,16,true,[0,0,0]);
 txt("Gerado em: "+new Date().toLocaleString("pt-BR"),145,62,8,false,[0,0,0]);
 d.setDrawColor(...yellow);
@@ -60,8 +61,61 @@ txt("pelo sistema.",151,268,8,false,[0,0,0]);
 d.save(tipo.toLowerCase().replaceAll(" ","-")+"-"+Date.now()+".pdf")
 }
 const filtrados=useMemo(()=>alertas.filter(a=>`${a.cliente} ${a.painel} ${a.situacao}`.toLowerCase().includes(busca.toLowerCase())),[alertas,busca]),pend=alertas.filter(a=>a.status!=="Resolvido").length,res=alertas.filter(a=>a.status==="Resolvido").length;
+const totalAlertas=alertas.length,totalOS=agenda.length,totalRelatorios=relatorios.length;
+const urgentes=alertas.filter(a=>a.prioridade==="Urgente"||a.prioridade==="Alta").length;
+const painelTop=(()=>{let m={};alertas.forEach(a=>m[a.painel]=(m[a.painel]||0)+1);let e=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return e?`${e[0]} (${e[1]})`:"Sem dados"})()
+const taxaResolucao=totalAlertas?Math.round((res/totalAlertas)*100):0;
+const agendaHoje=agenda.filter(s=>s.data===new Date().toISOString().slice(0,10)).length;
+const ultimosEventos=[...alertas.slice(0,3).map(a=>({tipo:"Alerta",titulo:a.cliente,desc:a.situacao,status:a.status})),...agenda.slice(0,3).map(s=>({tipo:"Agenda",titulo:s.local,desc:s.servico,status:s.status})),...relatorios.slice(0,3).map(r=>({tipo:"Relatório",titulo:r.cliente,desc:r.atividade,status:r.status}))].slice(0,6);
 return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={carregar}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
-{aba==="dashboard"&&<><section className="metrics"><Card t="Alertas pendentes" v={pend} d="Precisam de acompanhamento"/><Card t="Alertas resolvidos" v={res} d="Ocorrências finalizadas"/><Card t="Clientes cadastrados" v={clientes.length} d="Base ativa no sistema"/><Card t="Serviços na agenda" v={agenda.length} d="Visitas e tarefas"/></section><section className="grid"><Panel title="Ocorrências recentes">{alertas.slice(0,5).map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.status}`}/>)}</Panel><Panel title="Painéis monitorados"><div className="chips">{PAINEIS.map(p=><span key={p}>{p}</span>)}</div></Panel></section></>}
+{aba==="dashboard"&&<>
+<section className="dashHero">
+  <div>
+    <span>Central operacional</span>
+    <h2>Dashboard avançado</h2>
+    <p>Visão rápida dos alertas, tarefas, relatórios, painéis com mais ocorrências e produtividade técnica.</p>
+  </div>
+  <div className="scoreBox">
+    <small>Taxa de resolução</small>
+    <strong>{taxaResolucao}%</strong>
+  </div>
+</section>
+<section className="metrics">
+  <Card t="Alertas pendentes" v={pend} d="Precisam de acompanhamento"/>
+  <Card t="Alertas resolvidos" v={res} d="Ocorrências finalizadas"/>
+  <Card t="Ocorrências críticas" v={urgentes} d="Alta prioridade ou urgente"/>
+  <Card t="Agenda de hoje" v={agendaHoje} d="Serviços programados"/>
+</section>
+<section className="advancedGrid">
+  <div className="panel">
+    <h2>Status operacional</h2>
+    <div className="statusRows">
+      <div><span>Pendentes</span><b>{pend}</b></div>
+      <div><span>Resolvidos</span><b>{res}</b></div>
+      <div><span>Relatórios</span><b>{totalRelatorios}</b></div>
+      <div><span>Tarefas/OS</span><b>{totalOS}</b></div>
+    </div>
+  </div>
+  <div className="panel">
+    <h2>Painel com mais alertas</h2>
+    <div className="bigInsight">{painelTop}</div>
+    <p className="muted">Ajuda a identificar qual plataforma exige mais atenção.</p>
+  </div>
+  <div className="panel wide">
+    <h2>Últimos movimentos</h2>
+    {ultimosEventos.length===0&&<div className="empty">Nenhuma movimentação ainda.</div>}
+    {ultimosEventos.map((e,i)=><div className="timeline" key={i}><div className="dot"></div><div><b>{e.tipo} • {e.titulo}</b><p>{e.desc}</p><small>{e.status}</small></div></div>)}
+  </div>
+  <div className="panel">
+    <h2>Painéis monitorados</h2>
+    <div className="chips">{PAINEIS.map(p=><span key={p}>{p}</span>)}</div>
+  </div>
+</section>
+<section className="grid">
+  <Panel title="Ocorrências recentes">{alertas.slice(0,5).map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.status}`}/>)}</Panel>
+  <Panel title="Resumo da operação"><div className="miniStats"><p><b>{clientes.length}</b> clientes cadastrados</p><p><b>{totalAlertas}</b> alertas totais</p><p><b>{totalRelatorios}</b> relatórios emitidos</p></div></Panel>
+</section>
+</>}
 {aba==="alertas"&&<Area><Form title={edit?.tabela==="alertas"?"Editar alerta":"Novo alerta"} edit={edit?.tabela==="alertas"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("alertas",alerta,()=>setAlerta(VA))}}><Campo l="Cliente" v={alerta.cliente} s={v=>setAlerta({...alerta,cliente:v})}/><Select l="Painel" v={alerta.painel} o={PAINEIS} s={v=>setAlerta({...alerta,painel:v})}/><Texto l="Situação" v={alerta.situacao} s={v=>setAlerta({...alerta,situacao:v})}/><Select l="Prioridade" v={alerta.prioridade} o={PRIOR} s={v=>setAlerta({...alerta,prioridade:v})}/><Select l="Status" v={alerta.status} o={STATUS} s={v=>setAlerta({...alerta,status:v})}/><Campo l="Responsável" v={alerta.responsavel} s={v=>setAlerta({...alerta,responsavel:v})}/><Texto l="Observação" v={alerta.observacao} s={v=>setAlerta({...alerta,observacao:v})}/></Form><Panel title="Alertas registrados"><input placeholder="Buscar..." value={busca} onChange={e=>setBusca(e.target.value)}/>{filtrados.map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.prioridade} • ${a.status}`} extra={<><select value={a.status} onChange={e=>stat(a.id,e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select><button onClick={()=>pdf("Alerta Técnico",a)}>PDF</button><button onClick={()=>editar("alertas",a)}>Editar</button><button className="danger" onClick={()=>del("alertas",a.id)}>Excluir</button></>}/>)}</Panel></Area>}
 {aba==="clientes"&&<Area><Form title={edit?.tabela==="clientes"?"Editar cliente":"Novo cliente"} edit={edit?.tabela==="clientes"} cancel={cancelar} noFile submit={e=>{e.preventDefault();salvar("clientes",cliente,()=>setCliente(VC))}}><Campo l="Nome" v={cliente.nome} s={v=>setCliente({...cliente,nome:v})}/><Campo l="Contato" v={cliente.contato} s={v=>setCliente({...cliente,contato:v})}/><Campo l="Cidade/Bairro" v={cliente.cidade} s={v=>setCliente({...cliente,cidade:v})}/><Select l="Painel" v={cliente.painel} o={PAINEIS} s={v=>setCliente({...cliente,painel:v})}/><Campo l="Potência" v={cliente.potencia} s={v=>setCliente({...cliente,potencia:v})}/><Campo l="Status" v={cliente.status} s={v=>setCliente({...cliente,status:v})}/></Form><Panel title="Clientes">{clientes.map(c=><Item key={c.id} title={c.nome} text={c.cidade||""} sub={`${c.painel} • ${c.status}`} extra={<><button onClick={()=>editar("clientes",c)}>Editar</button><button className="danger" onClick={()=>del("clientes",c.id)}>Excluir</button></>}/>)}</Panel></Area>}
 {aba==="agenda"&&<Area><Form title={edit?.tabela==="agenda"?"Editar tarefa":"Nova tarefa"} edit={edit?.tabela==="agenda"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("agenda",serv,()=>setServ(VG))}}><Campo l="Data" type="date" v={serv.data} s={v=>setServ({...serv,data:v})}/><Campo l="Horário" type="time" v={serv.horario} s={v=>setServ({...serv,horario:v})}/><Campo l="Local/Cliente" v={serv.local} s={v=>setServ({...serv,local:v})}/><Texto l="Serviço a fazer" v={serv.servico} s={v=>setServ({...serv,servico:v})}/><Campo l="Equipe/Responsável" v={serv.equipe} s={v=>setServ({...serv,equipe:v})}/><Campo l="Status" v={serv.status} s={v=>setServ({...serv,status:v})}/></Form><Panel title="Agenda">{agenda.map(s=><Item key={s.id} x={s} title={s.local} text={s.servico} sub={`${s.data} ${s.horario||""} • ${s.status}`} extra={<><button onClick={()=>pdf("Tarefa Técnica",s)}>PDF</button><button onClick={()=>editar("agenda",s)}>Editar</button><button className="danger" onClick={()=>del("agenda",s.id)}>Excluir</button></>}/>)}</Panel></Area>}
