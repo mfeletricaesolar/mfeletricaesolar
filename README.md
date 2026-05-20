@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Correção definitiva da assinatura no celular.
+Correção final QR + assinatura limpa.

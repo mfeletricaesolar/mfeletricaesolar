@@ -37,7 +37,7 @@ if(x?.arquivo_url){y+=3;txt("Anexo:",14,y,10,true);d.setTextColor(0,91,180);d.te
 
 if(tipo==="Tarefa Técnica"){
   try{
-    let link=window.location.origin+"/#os-"+(x.id||"");
+    let link=window.location.origin+"/pdf-os-"+(x.id||"")+".pdf";
     let qr=await QRCode.toDataURL(link,{margin:1,width:180});
     d.addImage(qr,"PNG",165,78,28,28);
     txt("QR Code da OS",164,111,8,true,[0,0,0]);
@@ -45,7 +45,7 @@ if(tipo==="Tarefa Técnica"){
   if(x?.assinatura_url){
     d.setDrawColor(...yellow);d.roundedRect(14,204,76,32,3,3);
     txt("Assinatura do cliente/responsável",18,207,8,true,[0,0,0]);
-    try{d.addImage(x.assinatura_url,"PNG",20,212,74,20)}catch(e){}
+    try{d.addImage(x.assinatura_url,"PNG",24,214,62,16)}catch(e){}
     txt(x.assinatura_nome||"Assinatura registrada",20,235,7,false,[0,0,0]);
   }
 }
