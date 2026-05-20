@@ -37,16 +37,16 @@ if(x?.arquivo_url){y+=3;txt("Anexo:",14,y,10,true);d.setTextColor(0,91,180);d.te
 
 if(tipo==="Tarefa Técnica"){
   try{
-    let link=window.location.origin+"?os="+(x.id||"");
+    let link=window.location.origin+"/#os-"+(x.id||"");
     let qr=await QRCode.toDataURL(link,{margin:1,width:180});
     d.addImage(qr,"PNG",165,78,28,28);
     txt("QR Code da OS",164,111,8,true,[0,0,0]);
   }catch(e){}
   if(x?.assinatura_url){
     d.setDrawColor(...yellow);d.roundedRect(14,204,76,32,3,3);
-    txt("Assinatura do cliente/responsável",18,212,8,true,[0,0,0]);
-    try{d.addImage(x.assinatura_url,"PNG",20,215,58,16)}catch(e){}
-    txt(x.assinatura_nome||"Assinatura registrada",20,232,7,false,[0,0,0]);
+    txt("Assinatura do cliente/responsável",18,207,8,true,[0,0,0]);
+    try{d.addImage(x.assinatura_url,"PNG",20,212,74,20)}catch(e){}
+    txt(x.assinatura_nome||"Assinatura registrada",20,235,7,false,[0,0,0]);
   }
 }
 
@@ -144,6 +144,6 @@ function Texto({l,v,s}){return <label><span>{l}</span><textarea value={v||""} on
 function Select({l,v,o,s}){return <label><span>{l}</span><select value={v||""} onChange={e=>s(e.target.value)}>{o.map(x=><option key={x}>{x}</option>)}</select></label>}
 function Item({title,text,sub,extra,x}){return <div className="item"><div><b>{title}</b><p>{text}</p><small>{sub}</small>{x?.arquivo_url&&<a href={x.arquivo_url} target="_blank">Abrir anexo</a>}</div><div className="actions">{extra}</div></div>}
 
-function SignaturePad({value,onChange}){const ref=React.useRef(null),[draw,setDraw]=React.useState(false);React.useEffect(()=>{let c=ref.current;if(!c)return;let ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.lineCap="round";if(value){let img=new Image();img.onload=()=>ctx.drawImage(img,0,0,c.width,c.height);img.src=value}},[value]);function pos(e){let r=ref.current.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*(ref.current.width/r.width),y:(p.clientY-r.top)*(ref.current.height/r.height)}}function start(e){e.preventDefault();setDraw(true);let p=pos(e),ctx=ref.current.getContext("2d");ctx.beginPath();ctx.moveTo(p.x,p.y)}function move(e){if(!draw)return;e.preventDefault();let p=pos(e),ctx=ref.current.getContext("2d");ctx.lineTo(p.x,p.y);ctx.stroke();onChange(ref.current.toDataURL("image/png"))}function end(){setDraw(false);onChange(ref.current.toDataURL("image/png"))}function limpar(){let c=ref.current,ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);onChange("")}return <div className="signatureBox"><span>Assinatura digital</span><canvas ref={ref} width="520" height="170" onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end} onTouchStart={start} onTouchMove={move} onTouchEnd={end}></canvas><button type="button" onClick={limpar}>Limpar assinatura</button></div>}
+function SignaturePad({value,onChange}){const ref=React.useRef(null),[draw,setDraw]=React.useState(false);React.useEffect(()=>{let c=ref.current;if(!c)return;let ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle="#111";ctx.lineWidth=2;ctx.lineCap="round";if(value){let img=new Image();img.onload=()=>ctx.drawImage(img,0,0,c.width,c.height);img.src=value}},[value]);function pos(e){let r=ref.current.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*(ref.current.width/r.width),y:(p.clientY-r.top)*(ref.current.height/r.height)}}function start(e){e.preventDefault();setDraw(true);let p=pos(e),ctx=ref.current.getContext("2d");ctx.beginPath();ctx.moveTo(p.x,p.y)}function move(e){if(!draw)return;e.preventDefault();let p=pos(e),ctx=ref.current.getContext("2d");ctx.lineTo(p.x,p.y);ctx.stroke();ctx.beginPath();ctx.moveTo(p.x,p.y);onChange(ref.current.toDataURL("image/png"))}function end(){setDraw(false);onChange(ref.current.toDataURL("image/png"))}function limpar(){let c=ref.current,ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);onChange("")}return <div className="signatureBox"><span>Assinatura digital</span><canvas ref={ref} width="900" height="240" onMouseDown={start} onMouseMove={move} onMouseUp={end} onMouseLeave={end} onTouchStart={start} onTouchMove={move} onTouchEnd={end}></canvas><button type="button" onClick={limpar}>Limpar assinatura</button></div>}
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);

@@ -46,3 +46,13 @@
 .sigPreview{margin-top:12px;background:#181818;border:1px solid #333;border-radius:16px;padding:12px;max-width:220px}
 .sigPreview b{display:block;color:#facc15;margin-bottom:8px}
 .sigPreview img{width:100%;background:#fff;border-radius:10px}
+
+.signatureBox canvas{
+min-height:180px;
+background:#fff;
+cursor:crosshair;
+}
+.sigPreview img{
+object-fit:contain;
+padding:6px;
+}
