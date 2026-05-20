@@ -76,3 +76,20 @@ padding:6px;
   background:#fff;
   padding:8px;
 }
+
+.signatureBox canvas{
+  width:100%!important;
+  height:260px!important;
+  min-height:260px!important;
+  background:#fff!important;
+  border:2px dashed #facc15!important;
+  border-radius:18px!important;
+  touch-action:none!important;
+  display:block!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  -webkit-touch-callout:none!important;
+}
+.signatureBox{
+  overscroll-behavior:contain;
+}

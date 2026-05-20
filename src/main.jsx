@@ -145,13 +145,85 @@ function Select({l,v,o,s}){return <label><span>{l}</span><select value={v||""} o
 function Item({title,text,sub,extra,x}){return <div className="item"><div><b>{title}</b><p>{text}</p><small>{sub}</small>{x?.arquivo_url&&<a href={x.arquivo_url} target="_blank">Abrir anexo</a>}</div><div className="actions">{extra}</div></div>}
 
 function SignaturePad({value,onChange}){
-const ref=React.useRef(null),drawing=React.useRef(false),last=React.useRef(null);
-React.useEffect(()=>{let c=ref.current;if(!c)return;let ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.strokeStyle="#111";ctx.lineWidth=4;ctx.lineCap="round";ctx.lineJoin="round";if(value){let img=new Image();img.onload=()=>ctx.drawImage(img,0,0,c.width,c.height);img.src=value}},[value]);
-function getPoint(e){let c=ref.current,r=c.getBoundingClientRect();let p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*(c.width/r.width),y:(p.clientY-r.top)*(c.height/r.height)}}
-function startDraw(e){e.preventDefault();drawing.current=true;last.current=getPoint(e)}
-function draw(e){if(!drawing.current)return;e.preventDefault();let c=ref.current,ctx=c.getContext("2d"),p=getPoint(e),l=last.current;ctx.beginPath();ctx.moveTo(l.x,l.y);ctx.lineTo(p.x,p.y);ctx.stroke();last.current=p}
-function stopDraw(e){if(e)e.preventDefault();if(!drawing.current)return;drawing.current=false;last.current=null;onChange(ref.current.toDataURL("image/png"))}
-function limpar(){let c=ref.current,ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);onChange("")}
-return <div className="signatureBox"><span>Assinatura digital</span><canvas ref={ref} width="1200" height="420" onPointerDown={startDraw} onPointerMove={draw} onPointerUp={stopDraw} onPointerCancel={stopDraw} onPointerLeave={stopDraw} onMouseDown={startDraw} onMouseMove={draw} onMouseUp={stopDraw} onTouchStart={startDraw} onTouchMove={draw} onTouchEnd={stopDraw}></canvas><button type="button" onClick={limpar}>Limpar assinatura</button></div>}
+const canvasRef=React.useRef(null);
+const drawing=React.useRef(false);
+const last=React.useRef({x:0,y:0});
+const saved=React.useRef(value||"");
+
+function setupCanvas(){
+  const canvas=canvasRef.current;
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=Math.max(1,Math.floor(rect.width*dpr));
+  canvas.height=Math.max(1,Math.floor(rect.height*dpr));
+  const ctx=canvas.getContext("2d");
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,rect.width,rect.height);
+  ctx.strokeStyle="#111";
+  ctx.lineWidth=3.2;
+  ctx.lineCap="round";
+  ctx.lineJoin="round";
+  if(saved.current){
+    const img=new Image();
+    img.onload=()=>ctx.drawImage(img,0,0,rect.width,rect.height);
+    img.src=saved.current;
+  }
+}
+
+React.useEffect(()=>{saved.current=value||"";setTimeout(setupCanvas,50);window.addEventListener("resize",setupCanvas);return()=>window.removeEventListener("resize",setupCanvas)},[value]);
+
+function point(e){
+  const canvas=canvasRef.current;
+  const rect=canvas.getBoundingClientRect();
+  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+}
+
+function down(e){
+  e.preventDefault();
+  const canvas=canvasRef.current;
+  canvas.setPointerCapture?.(e.pointerId);
+  drawing.current=true;
+  last.current=point(e);
+}
+
+function move(e){
+  if(!drawing.current)return;
+  e.preventDefault();
+  const canvas=canvasRef.current;
+  const ctx=canvas.getContext("2d");
+  const p=point(e);
+  ctx.beginPath();
+  ctx.moveTo(last.current.x,last.current.y);
+  ctx.lineTo(p.x,p.y);
+  ctx.stroke();
+  last.current=p;
+}
+
+function up(e){
+  if(!drawing.current)return;
+  e.preventDefault();
+  drawing.current=false;
+  const data=canvasRef.current.toDataURL("image/png");
+  saved.current=data;
+  onChange(data);
+}
+
+function limpar(){
+  saved.current="";
+  const canvas=canvasRef.current;
+  const rect=canvas.getBoundingClientRect();
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#fff";
+  ctx.fillRect(0,0,rect.width,rect.height);
+  onChange("");
+}
+
+return <div className="signatureBox">
+  <span>Assinatura digital</span>
+  <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}></canvas>
+  <button type="button" onClick={limpar}>Limpar assinatura</button>
+</div>}
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App/>);

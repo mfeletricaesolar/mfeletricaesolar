@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Correção de assinatura para celular.
+Correção definitiva da assinatura no celular.
