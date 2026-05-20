@@ -201,7 +201,12 @@ function setupCanvas(){
   }
 }
 
-React.useEffect(()=>{saved.current=value||"";setTimeout(setupCanvas,50);window.addEventListener("resize",setupCanvas);return()=>window.removeEventListener("resize",setupCanvas)},[value]);
+React.useEffect(()=>{
+  saved.current=value||"";
+  setTimeout(setupCanvas,80);
+  window.addEventListener("resize",setupCanvas);
+  return()=>window.removeEventListener("resize",setupCanvas)
+},[value]);
 
 function point(e){
   const canvas=canvasRef.current;
@@ -211,6 +216,7 @@ function point(e){
 
 function down(e){
   e.preventDefault();
+  e.stopPropagation();
   const canvas=canvasRef.current;
   canvas.setPointerCapture?.(e.pointerId);
   drawing.current=true;
@@ -220,6 +226,7 @@ function down(e){
 function move(e){
   if(!drawing.current)return;
   e.preventDefault();
+  e.stopPropagation();
   const canvas=canvasRef.current;
   const ctx=canvas.getContext("2d");
   const p=point(e);
@@ -231,9 +238,13 @@ function move(e){
 }
 
 function up(e){
+  if(e){
+    e.preventDefault();
+    e.stopPropagation();
+  }
   if(!drawing.current)return;
-  e.preventDefault();
   drawing.current=false;
+  last.current={x:0,y:0};
   const data=canvasRef.current.toDataURL("image/png");
   saved.current=data;
   onChange(data);
@@ -251,7 +262,7 @@ function limpar(){
 
 return <div className="signatureBox">
   <span>Assinatura digital</span>
-  <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}></canvas>
+  <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up}></canvas>
   <button type="button" onClick={limpar}>Limpar assinatura</button>
 </div>}
 
