@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Correção final QR + assinatura limpa.
+Correção: QR abre página pública da OS e assinatura limpa no PDF.

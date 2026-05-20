@@ -2,9 +2,10 @@ import React,{useEffect,useMemo,useState}from"react";import ReactDOM from"react-
 const PAINEIS=["SOLARMAN","SOLIS","GOODWE","RENAC","ELEKEEPER","AUXSOL"],STATUS=["Pendente","Em análise","Acompanhar","Resolvido"],PRIOR=["Baixa","Média","Alta","Urgente"];
 const STATUS_OS=["Agendado","Em andamento","Aguardando cliente","Finalizado"];
 const VA={cliente:"",painel:"SOLARMAN",situacao:"",prioridade:"Média",status:"Pendente",responsavel:"",observacao:"",arquivo_url:""},VC={nome:"",contato:"",cidade:"",painel:"SOLARMAN",potencia:"",status:"Normal"},VG={data:"",horario:"",local:"",servico:"",equipe:"",status:"Agendado",tipo_os:"Manutenção",diagnostico:"",solucao:"",assinatura_nome:"",assinatura_url:"",arquivo_url:""},VR={dia:"",cliente:"",atividade:"",resultado:"",responsavel:"",status:"Bem-sucedido",arquivo_url:""};
-function App(){const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[assinatura,setAssinatura]=useState(""),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR);
+function App(){const osPublicoId=new URLSearchParams(window.location.search).get("os");const[osPublica,setOsPublica]=useState(null),[carregandoOs,setCarregandoOs]=useState(false);const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[assinatura,setAssinatura]=useState(""),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR);
 async function carregar(){let[a,c,g,r]=await Promise.all([supabase.from("alertas").select("*").order("created_at",{ascending:false}),supabase.from("clientes").select("*").order("created_at",{ascending:false}),supabase.from("agenda").select("*").order("data",{ascending:true}),supabase.from("relatorios").select("*").order("created_at",{ascending:false})]);if(a.error||c.error||g.error||r.error)setMsg("Erro ao carregar dados.");else{setAlertas(a.data||[]);setClientes(c.data||[]);setAgenda(g.data||[]);setRelatorios(r.data||[]);setMsg("")}}
 useEffect(()=>{carregar()},[]);
+useEffect(()=>{async function abrirOsPublica(){if(!osPublicoId)return;setCarregandoOs(true);let{data,error}=await supabase.from("agenda").select("*").eq("id",osPublicoId).single();if(!error)setOsPublica(data);setCarregandoOs(false)}abrirOsPublica()},[osPublicoId]);
 async function atualizarManual(){await carregar();setMsg("Sistema atualizado com sucesso.")}
 async function upload(t){if(!arq)return"";let ext=arq.name.split(".").pop(),nome=`${t}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;let{error}=await supabase.storage.from("anexos-mf").upload(nome,arq);if(error){setMsg("Erro no upload: "+error.message);return""}return supabase.storage.from("anexos-mf").getPublicUrl(nome).data.publicUrl}
 async function salvar(t,d,limpar){let obj={...d},url=await upload(t);if(url)obj.arquivo_url=url;if(t==="agenda"&&assinatura)obj.assinatura_url=assinatura;let resp=edit?.tabela===t?await supabase.from(t).update(obj).eq("id",edit.id):await supabase.from(t).insert([obj]);if(resp.error)return setMsg("Erro ao salvar: "+resp.error.message);setEdit(null);setArq(null);setAssinatura("");limpar();setMsg(edit?"Alteração salva.":"Salvo com sucesso.");carregar()}
@@ -37,15 +38,19 @@ if(x?.arquivo_url){y+=3;txt("Anexo:",14,y,10,true);d.setTextColor(0,91,180);d.te
 
 if(tipo==="Tarefa Técnica"){
   try{
-    let link=window.location.origin+"/pdf-os-"+(x.id||"")+".pdf";
+    let link=window.location.origin+"?os="+(x.id||"");
     let qr=await QRCode.toDataURL(link,{margin:1,width:180});
     d.addImage(qr,"PNG",165,78,28,28);
     txt("QR Code da OS",164,111,8,true,[0,0,0]);
   }catch(e){}
   if(x?.assinatura_url){
-    d.setDrawColor(...yellow);d.roundedRect(14,204,76,32,3,3);
+    const sy=198;
+    d.setFillColor(255,255,255);
+    d.rect(10,190,190,55,"F");
+    d.setDrawColor(...yellow);
+    d.roundedRect(14,198,92,40,3,3);
     txt("Assinatura do cliente/responsável",18,207,8,true,[0,0,0]);
-    try{d.addImage(x.assinatura_url,"PNG",24,214,62,16)}catch(e){}
+    try{d.addImage(x.assinatura_url,"PNG",25,213,58,17)}catch(e){}
     txt(x.assinatura_nome||"Assinatura registrada",20,235,7,false,[0,0,0]);
   }
 }
@@ -63,6 +68,7 @@ const painelTop=(()=>{let m={};alertas.forEach(a=>m[a.painel]=(m[a.painel]||0)+1
 const taxaResolucao=totalAlertas?Math.round((res/totalAlertas)*100):0;
 const agendaHoje=agenda.filter(s=>s.data===new Date().toISOString().slice(0,10)).length;
 const ultimosEventos=[...alertas.slice(0,3).map(a=>({tipo:"Alerta",titulo:a.cliente,desc:a.situacao,status:a.status})),...agenda.slice(0,3).map(s=>({tipo:"Agenda",titulo:s.local,desc:s.servico,status:s.status})),...relatorios.slice(0,3).map(r=>({tipo:"Relatório",titulo:r.cliente,desc:r.atividade,status:r.status}))].slice(0,6);
+if(osPublicoId)return <PublicOS os={osPublica} loading={carregandoOs} onPdf={pdf} osNumero={osNumero}/>;
 return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={atualizarManual}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
 {aba==="dashboard"&&<>
 <section className="dashHero">
@@ -143,6 +149,29 @@ function Campo({l,v,s,type="text"}){return <label><span>{l}</span><input type={t
 function Texto({l,v,s}){return <label><span>{l}</span><textarea value={v||""} onChange={e=>s(e.target.value)}/></label>}
 function Select({l,v,o,s}){return <label><span>{l}</span><select value={v||""} onChange={e=>s(e.target.value)}>{o.map(x=><option key={x}>{x}</option>)}</select></label>}
 function Item({title,text,sub,extra,x}){return <div className="item"><div><b>{title}</b><p>{text}</p><small>{sub}</small>{x?.arquivo_url&&<a href={x.arquivo_url} target="_blank">Abrir anexo</a>}</div><div className="actions">{extra}</div></div>}
+
+
+function PublicOS({os,loading,onPdf,osNumero}){
+  if(loading)return <div className="publicOs"><div className="publicCard"><h1>Carregando OS...</h1></div></div>;
+  if(!os)return <div className="publicOs"><div className="publicCard"><h1>OS não encontrada</h1><p>Verifique se o QR Code foi gerado corretamente.</p></div></div>;
+  return <div className="publicOs">
+    <div className="publicCard">
+      <div className="publicBrand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Ordem de Serviço Técnica</span></div></div>
+      <div className="publicHeader"><div><small>{osNumero(os)}</small><h1>{os.local}</h1><p>{os.servico}</p></div><span>{os.status}</span></div>
+      <div className="publicGrid">
+        <div><b>Tipo de OS</b><p>{os.tipo_os||"-"}</p></div>
+        <div><b>Data/Horário</b><p>{os.data||"-"} {os.horario||""}</p></div>
+        <div><b>Técnico</b><p>{os.equipe||"-"}</p></div>
+        <div><b>Status</b><p>{os.status||"-"}</p></div>
+      </div>
+      <section><h2>Diagnóstico</h2><p>{os.diagnostico||"-"}</p></section>
+      <section><h2>Solução aplicada</h2><p>{os.solucao||"-"}</p></section>
+      {os.assinatura_url&&<section><h2>Assinatura</h2><div className="publicSignature"><img src={os.assinatura_url}/><small>{os.assinatura_nome||"Assinatura registrada"}</small></div></section>}
+      {os.arquivo_url&&<a className="publicBtn" href={os.arquivo_url} target="_blank">Abrir anexo</a>}
+      <button className="publicBtn" onClick={()=>onPdf("Tarefa Técnica",os)}>Baixar PDF da OS</button>
+    </div>
+  </div>
+}
 
 function SignaturePad({value,onChange}){
 const canvasRef=React.useRef(null);
