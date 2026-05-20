@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Correção: botão Atualizar funcionando e PDF sem símbolo na bolinha amarela.
+Atualização: QR Code + Assinatura Digital na OS.
