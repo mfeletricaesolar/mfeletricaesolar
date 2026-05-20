@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Atualização: Dashboard avançado.
+Atualização: OS Técnica + Timeline.
