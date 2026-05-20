@@ -174,95 +174,110 @@ function PublicOS({os,loading,onPdf,osNumero}){
 }
 
 function SignaturePad({value,onChange}){
-const canvasRef=React.useRef(null);
+const [paths,setPaths]=React.useState([]);
+const pathsRef=React.useRef([]);
 const drawing=React.useRef(false);
-const last=React.useRef({x:0,y:0});
-const saved=React.useRef(value||"");
+const svgRef=React.useRef(null);
 
-function setupCanvas(){
-  const canvas=canvasRef.current;
-  if(!canvas)return;
-  const rect=canvas.getBoundingClientRect();
-  const dpr=window.devicePixelRatio||1;
-  canvas.width=Math.max(1,Math.floor(rect.width*dpr));
-  canvas.height=Math.max(1,Math.floor(rect.height*dpr));
-  const ctx=canvas.getContext("2d");
-  ctx.setTransform(dpr,0,0,dpr,0,0);
-  ctx.fillStyle="#fff";
-  ctx.fillRect(0,0,rect.width,rect.height);
-  ctx.strokeStyle="#111";
-  ctx.lineWidth=3.2;
-  ctx.lineCap="round";
-  ctx.lineJoin="round";
-  if(saved.current){
-    const img=new Image();
-    img.onload=()=>ctx.drawImage(img,0,0,rect.width,rect.height);
-    img.src=saved.current;
-  }
+function getPoint(e){
+  const rect=svgRef.current.getBoundingClientRect();
+  const t=e.touches?.[0] || e.changedTouches?.[0];
+  const clientX=t?t.clientX:e.clientX;
+  const clientY=t?t.clientY:e.clientY;
+  return {x:clientX-rect.left,y:clientY-rect.top};
 }
 
-React.useEffect(()=>{
-  saved.current=value||"";
-  setTimeout(setupCanvas,80);
-  window.addEventListener("resize",setupCanvas);
-  return()=>window.removeEventListener("resize",setupCanvas)
-},[value]);
-
-function point(e){
-  const canvas=canvasRef.current;
-  const rect=canvas.getBoundingClientRect();
-  return {x:e.clientX-rect.left,y:e.clientY-rect.top};
+function pathFromPoints(points){
+  if(!points.length)return "";
+  return "M "+points.map(p=>`${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" L ");
 }
 
-function down(e){
+function exportPng(currentPaths){
+  const svg=svgRef.current;
+  const rect=svg.getBoundingClientRect();
+  const width=Math.max(600,Math.floor(rect.width*2));
+  const height=Math.max(260,Math.floor(rect.height*2));
+  const scaleX=width/rect.width;
+  const scaleY=height/rect.height;
+
+  const body=currentPaths.map(points=>{
+    const d=points.map((p,i)=>`${i===0?"M":"L"} ${(p.x*scaleX).toFixed(1)} ${(p.y*scaleY).toFixed(1)}`).join(" ");
+    return `<path d="${d}" fill="none" stroke="#111111" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join("");
+
+  const svgText=`<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"><rect width="100%" height="100%" fill="#ffffff"/>${body}</svg>`;
+  const img=new Image();
+  const blob=new Blob([svgText],{type:"image/svg+xml;charset=utf-8"});
+  const url=URL.createObjectURL(blob);
+  img.onload=()=>{
+    const canvas=document.createElement("canvas");
+    canvas.width=width;
+    canvas.height=height;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#fff";
+    ctx.fillRect(0,0,width,height);
+    ctx.drawImage(img,0,0);
+    URL.revokeObjectURL(url);
+    onChange(canvas.toDataURL("image/png"));
+  };
+  img.src=url;
+}
+
+function startDraw(e){
   e.preventDefault();
   e.stopPropagation();
-  const canvas=canvasRef.current;
-  canvas.setPointerCapture?.(e.pointerId);
   drawing.current=true;
-  last.current=point(e);
+  const p=getPoint(e);
+  const next=[...pathsRef.current,[p]];
+  pathsRef.current=next;
+  setPaths(next);
 }
 
-function move(e){
+function moveDraw(e){
   if(!drawing.current)return;
   e.preventDefault();
   e.stopPropagation();
-  const canvas=canvasRef.current;
-  const ctx=canvas.getContext("2d");
-  const p=point(e);
-  ctx.beginPath();
-  ctx.moveTo(last.current.x,last.current.y);
-  ctx.lineTo(p.x,p.y);
-  ctx.stroke();
-  last.current=p;
+  const p=getPoint(e);
+  const next=pathsRef.current.map((stroke,i)=>i===pathsRef.current.length-1?[...stroke,p]:stroke);
+  pathsRef.current=next;
+  setPaths(next);
 }
 
-function up(e){
+function endDraw(e){
   if(e){
     e.preventDefault();
     e.stopPropagation();
   }
   if(!drawing.current)return;
   drawing.current=false;
-  last.current={x:0,y:0};
-  const data=canvasRef.current.toDataURL("image/png");
-  saved.current=data;
-  onChange(data);
+  exportPng(pathsRef.current);
 }
 
 function limpar(){
-  saved.current="";
-  const canvas=canvasRef.current;
-  const rect=canvas.getBoundingClientRect();
-  const ctx=canvas.getContext("2d");
-  ctx.fillStyle="#fff";
-  ctx.fillRect(0,0,rect.width,rect.height);
+  pathsRef.current=[];
+  setPaths([]);
   onChange("");
 }
 
 return <div className="signatureBox">
   <span>Assinatura digital</span>
-  <canvas ref={canvasRef} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} onPointerLeave={up}></canvas>
+  <div className="signatureSvgWrap">
+    {value && paths.length===0 && <img className="signatureExisting" src={value}/>}
+    <svg
+      ref={svgRef}
+      className="signatureSvg"
+      onTouchStart={startDraw}
+      onTouchMove={moveDraw}
+      onTouchEnd={endDraw}
+      onMouseDown={startDraw}
+      onMouseMove={moveDraw}
+      onMouseUp={endDraw}
+      onMouseLeave={endDraw}
+    >
+      <rect x="0" y="0" width="100%" height="100%" fill="#fff"></rect>
+      {paths.map((stroke,i)=><path key={i} d={pathFromPoints(stroke)} fill="none" stroke="#111" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round"/>)}
+    </svg>
+  </div>
   <button type="button" onClick={limpar}>Limpar assinatura</button>
 </div>}
 
