@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Correção QR Code + Assinatura.
+Correção de assinatura para celular.

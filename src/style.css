@@ -56,3 +56,23 @@ cursor:crosshair;
 object-fit:contain;
 padding:6px;
 }
+
+.signatureBox canvas{
+  width:100%;
+  height:220px!important;
+  min-height:220px!important;
+  background:#fff;
+  border:2px dashed #facc15;
+  border-radius:16px;
+  touch-action:none;
+  cursor:crosshair;
+  display:block;
+}
+.signatureBox{
+  overflow:hidden;
+}
+.sigPreview img{
+  object-fit:contain;
+  background:#fff;
+  padding:8px;
+}
