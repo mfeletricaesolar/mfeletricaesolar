@@ -5,6 +5,7 @@ const VA={cliente:"",painel:"SOLARMAN",situacao:"",prioridade:"Média",status:"P
 function App(){const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR);
 async function carregar(){let[a,c,g,r]=await Promise.all([supabase.from("alertas").select("*").order("created_at",{ascending:false}),supabase.from("clientes").select("*").order("created_at",{ascending:false}),supabase.from("agenda").select("*").order("data",{ascending:true}),supabase.from("relatorios").select("*").order("created_at",{ascending:false})]);if(a.error||c.error||g.error||r.error)setMsg("Erro ao carregar dados.");else{setAlertas(a.data||[]);setClientes(c.data||[]);setAgenda(g.data||[]);setRelatorios(r.data||[]);setMsg("")}}
 useEffect(()=>{carregar()},[]);
+async function atualizarManual(){await carregar();setMsg("Sistema atualizado com sucesso.")}
 async function upload(t){if(!arq)return"";let ext=arq.name.split(".").pop(),nome=`${t}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;let{error}=await supabase.storage.from("anexos-mf").upload(nome,arq);if(error){setMsg("Erro no upload: "+error.message);return""}return supabase.storage.from("anexos-mf").getPublicUrl(nome).data.publicUrl}
 async function salvar(t,d,limpar){let obj={...d},url=await upload(t);if(url)obj.arquivo_url=url;let resp=edit?.tabela===t?await supabase.from(t).update(obj).eq("id",edit.id):await supabase.from(t).insert([obj]);if(resp.error)return setMsg("Erro ao salvar: "+resp.error.message);setEdit(null);setArq(null);limpar();setMsg(edit?"Alteração salva.":"Salvo com sucesso.");carregar()}
 async function del(t,id){if(!confirm("Excluir?"))return;await supabase.from(t).delete().eq("id",id);carregar()}
@@ -37,7 +38,7 @@ txt("Gestão Técnica",45,29,10,false,yellow);
 /* Título e data */
 d.setFillColor(...yellow);
 d.circle(14,60,4,"F");
-txt("⚠",12.6,61.5,8,true,[0,0,0]);
+
 txt(tipo.toUpperCase(),24,63,16,true,[0,0,0]);
 txt("Gerado em: "+new Date().toLocaleString("pt-BR"),145,62,8,false,[0,0,0]);
 d.setDrawColor(...yellow);
@@ -71,7 +72,7 @@ const painelTop=(()=>{let m={};alertas.forEach(a=>m[a.painel]=(m[a.painel]||0)+1
 const taxaResolucao=totalAlertas?Math.round((res/totalAlertas)*100):0;
 const agendaHoje=agenda.filter(s=>s.data===new Date().toISOString().slice(0,10)).length;
 const ultimosEventos=[...alertas.slice(0,3).map(a=>({tipo:"Alerta",titulo:a.cliente,desc:a.situacao,status:a.status})),...agenda.slice(0,3).map(s=>({tipo:"Agenda",titulo:s.local,desc:s.servico,status:s.status})),...relatorios.slice(0,3).map(r=>({tipo:"Relatório",titulo:r.cliente,desc:r.atividade,status:r.status}))].slice(0,6);
-return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={carregar}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
+return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={atualizarManual}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
 {aba==="dashboard"&&<>
 <section className="dashHero">
   <div>

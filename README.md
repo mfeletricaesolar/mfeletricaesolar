@@ -1,2 +1,2 @@
 # MF Elétrica e Solar
-Atualização: OS Técnica + Timeline.
+Correção: botão Atualizar funcionando e PDF sem símbolo na bolinha amarela.
