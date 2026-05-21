@@ -177,3 +177,12 @@ padding:6px;
 .signatureBox canvas{
   display:none!important;
 }
+
+.proposalOptions{display:grid;gap:10px}
+.proposalOptions>span{font-size:14px;font-weight:800;color:#ddd}
+.proposalOption{display:grid;grid-template-columns:1fr 1fr auto;gap:8px}
+.proposalOption button,.proposalOptions>button{border:0;background:#333;color:#fff;border-radius:14px;padding:12px;font-weight:900;cursor:pointer}
+.proposalOptions>button{background:#facc15;color:#111}
+.proposalCard{background:#111;border:1px solid #2c2c2c;border-radius:20px;padding:16px;display:flex;justify-content:space-between;gap:16px;margin-top:12px}
+.proposalCard b{font-size:18px}.proposalCard p{color:#ddd;margin:7px 0}.proposalCard small{color:#facc15;font-weight:800}
+@media(max-width:700px){.proposalOption,.proposalCard{grid-template-columns:1fr;display:grid}.proposalCard .actions{align-items:stretch}}

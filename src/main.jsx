@@ -1,17 +1,20 @@
 import React,{useEffect,useMemo,useState}from"react";import ReactDOM from"react-dom/client";import{jsPDF}from"jspdf";import QRCode from"qrcode";import{supabase}from"./supabase";import"./style.css";
 const PAINEIS=["SOLARMAN","SOLIS","GOODWE","RENAC","ELEKEEPER","AUXSOL"],STATUS=["Pendente","Em análise","Acompanhar","Resolvido"],PRIOR=["Baixa","Média","Alta","Urgente"];
 const STATUS_OS=["Agendado","Em andamento","Aguardando cliente","Finalizado"];
+const VP={cliente:"",valor_projeto:"",carencia:"3 meses",banco:"",validade:"",observacoes:"",opcoes:[{parcelas:"48",valor:""},{parcelas:"60",valor:""},{parcelas:"72",valor:""}]};
 const VA={cliente:"",painel:"SOLARMAN",situacao:"",prioridade:"Média",status:"Pendente",responsavel:"",observacao:"",arquivo_url:""},VC={nome:"",contato:"",cidade:"",painel:"SOLARMAN",potencia:"",status:"Normal"},VG={data:"",horario:"",local:"",servico:"",equipe:"",status:"Agendado",tipo_os:"Manutenção",diagnostico:"",solucao:"",assinatura_nome:"",assinatura_url:"",arquivo_url:""},VR={dia:"",cliente:"",atividade:"",resultado:"",responsavel:"",status:"Bem-sucedido",arquivo_url:""};
-function App(){const osPublicoId=new URLSearchParams(window.location.search).get("os");const[osPublica,setOsPublica]=useState(null),[carregandoOs,setCarregandoOs]=useState(false);const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[assinatura,setAssinatura]=useState(""),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR);
-async function carregar(){let[a,c,g,r]=await Promise.all([supabase.from("alertas").select("*").order("created_at",{ascending:false}),supabase.from("clientes").select("*").order("created_at",{ascending:false}),supabase.from("agenda").select("*").order("data",{ascending:true}),supabase.from("relatorios").select("*").order("created_at",{ascending:false})]);if(a.error||c.error||g.error||r.error)setMsg("Erro ao carregar dados.");else{setAlertas(a.data||[]);setClientes(c.data||[]);setAgenda(g.data||[]);setRelatorios(r.data||[]);setMsg("")}}
+function App(){const osPublicoId=new URLSearchParams(window.location.search).get("os");const[osPublica,setOsPublica]=useState(null),[carregandoOs,setCarregandoOs]=useState(false);const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[propostas,setPropostas]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[assinatura,setAssinatura]=useState(""),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR),[proposta,setProposta]=useState(VP);
+async function carregar(){let[a,c,g,r,p]=await Promise.all([supabase.from("alertas").select("*").order("created_at",{ascending:false}),supabase.from("clientes").select("*").order("created_at",{ascending:false}),supabase.from("agenda").select("*").order("data",{ascending:true}),supabase.from("relatorios").select("*").order("created_at",{ascending:false}),supabase.from("propostas").select("*").order("created_at",{ascending:false})]);if(a.error||c.error||g.error||r.error||p.error)setMsg("Erro ao carregar dados.");else{setAlertas(a.data||[]);setClientes(c.data||[]);setAgenda(g.data||[]);setRelatorios(r.data||[]);setPropostas(p.data||[]);setMsg("")}}
 useEffect(()=>{carregar()},[]);
 useEffect(()=>{async function abrirOsPublica(){if(!osPublicoId)return;setCarregandoOs(true);let{data,error}=await supabase.from("agenda").select("*").eq("id",osPublicoId).single();if(!error)setOsPublica(data);setCarregandoOs(false)}abrirOsPublica()},[osPublicoId]);
 async function atualizarManual(){await carregar();setMsg("Sistema atualizado com sucesso.")}
 async function upload(t){if(!arq)return"";let ext=arq.name.split(".").pop(),nome=`${t}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;let{error}=await supabase.storage.from("anexos-mf").upload(nome,arq);if(error){setMsg("Erro no upload: "+error.message);return""}return supabase.storage.from("anexos-mf").getPublicUrl(nome).data.publicUrl}
-async function salvar(t,d,limpar){let obj={...d},url=await upload(t);if(url)obj.arquivo_url=url;if(t==="agenda"&&assinatura)obj.assinatura_url=assinatura;let resp=edit?.tabela===t?await supabase.from(t).update(obj).eq("id",edit.id):await supabase.from(t).insert([obj]);if(resp.error)return setMsg("Erro ao salvar: "+resp.error.message);setEdit(null);setArq(null);setAssinatura("");limpar();setMsg(edit?"Alteração salva.":"Salvo com sucesso.");carregar()}
+async function salvar(t,d,limpar){let obj={...d};if(t==="propostas")obj.opcoes=JSON.stringify(d.opcoes||[]);let url=await upload(t);if(url)obj.arquivo_url=url;if(t==="agenda"&&assinatura)obj.assinatura_url=assinatura;let resp=edit?.tabela===t?await supabase.from(t).update(obj).eq("id",edit.id):await supabase.from(t).insert([obj]);if(resp.error)return setMsg("Erro ao salvar: "+resp.error.message);setEdit(null);setArq(null);setAssinatura("");limpar();setMsg(edit?"Alteração salva.":"Salvo com sucesso.");carregar()}
 async function del(t,id){if(!confirm("Excluir?"))return;await supabase.from(t).delete().eq("id",id);carregar()}
-function editar(t,i){setEdit({tabela:t,id:i.id});setArq(null);setAssinatura(i.assinatura_url||"");if(t==="alertas"){setAlerta({...VA,...i});setAba("alertas")}if(t==="clientes"){setCliente({...VC,...i});setAba("clientes")}if(t==="agenda"){setServ({...VG,...i});setAba("agenda")}if(t==="relatorios"){setRel({...VR,...i});setAba("relatorios")}scrollTo({top:0,behavior:"smooth"})}
-function cancelar(){setEdit(null);setArq(null);setAssinatura("");setAlerta(VA);setCliente(VC);setServ(VG);setRel(VR)}
+function editar(t,i){setEdit({tabela:t,id:i.id});setArq(null);setAssinatura(i.assinatura_url||"");if(t==="alertas"){setAlerta({...VA,...i});setAba("alertas")}if(t==="clientes"){setCliente({...VC,...i});setAba("clientes")}if(t==="agenda"){setServ({...VG,...i});setAba("agenda")}if(t==="relatorios"){setRel({...VR,...i});setAba("relatorios")}
+if(t==="propostas"){let ops=[];try{ops=typeof i.opcoes==="string"?JSON.parse(i.opcoes):(i.opcoes||[])}catch(e){ops=[]}setProposta({...VP,...i,opcoes:ops.length?ops:VP.opcoes});setAba("propostas")}
+scrollTo({top:0,behavior:"smooth"})}
+function cancelar(){setEdit(null);setArq(null);setAssinatura("");setAlerta(VA);setCliente(VC);setServ(VG);setRel(VR);setProposta(VP)}
 async function stat(id,s){await supabase.from("alertas").update({status:s}).eq("id",id);carregar()}
 async function statOS(id,s){await supabase.from("agenda").update({status:s}).eq("id",id);carregar()}
 function osNumero(item){return "OS-"+String(item.id||"").slice(0,8).toUpperCase()}
@@ -61,15 +64,40 @@ txt("MF Elétrica e Solar",88,263,10,true,[0,0,0]);txt("Soluções inteligentes 
 txt("Relatório gerado automaticamente",151,263,8,false,[0,0,0]);txt("pelo sistema.",151,268,8,false,[0,0,0]);
 d.save(tipo.toLowerCase().replaceAll(" ","-")+"-"+Date.now()+".pdf")
 }
+
+function dinheiro(v){let n=String(v||"").replace(/\./g,"").replace(",",".");let num=parseFloat(n);if(isNaN(num))return v||"-";return num.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}
+function opcoesDaProposta(p){try{return typeof p.opcoes==="string"?JSON.parse(p.opcoes):(p.opcoes||[])}catch(e){return[]}}
+function setOpcao(i,campo,valor){setProposta(prev=>({...prev,opcoes:prev.opcoes.map((o,idx)=>idx===i?{...o,[campo]:valor}:o)}))}
+function addOpcao(){setProposta(prev=>({...prev,opcoes:[...(prev.opcoes||[]),{parcelas:"",valor:""}]}))}
+function removeOpcao(i){setProposta(prev=>({...prev,opcoes:prev.opcoes.filter((_,idx)=>idx!==i)}))}
+async function pdfProposta(p){
+  let d=new jsPDF("p","mm","a4"),logo=await logoBase64(),yellow=[250,204,21],black=[5,5,5],gray=[230,230,230];
+  function txt(t,x,y,size=11,bold=false,color=[0,0,0]){d.setTextColor(...color);d.setFont("helvetica",bold?"bold":"normal");d.setFontSize(size);d.text(String(t||"-"),x,y)}
+  d.setFillColor(...black);d.rect(0,0,210,45,"F");d.setFillColor(...yellow);d.rect(120,40,90,5,"F");d.setFillColor(...yellow);d.roundedRect(112,38,18,8,3,3,"F");
+  if(logo){try{d.addImage(logo,"PNG",7,8,30,17)}catch(e){}}
+  txt("MF Elétrica e Solar",45,18,17,true,[255,255,255]);txt("Proposta de Financiamento",45,29,10,false,yellow);
+  d.setFillColor(...yellow);d.circle(14,60,4,"F");txt("PROPOSTA COMERCIAL",24,63,16,true,[0,0,0]);txt("Gerado em: "+new Date().toLocaleString("pt-BR"),145,62,8,false,[0,0,0]);
+  d.setDrawColor(...yellow);d.setLineWidth(.5);d.line(10,70,200,70);
+  let y=85;
+  function row(label,value){txt(label+":",14,y,10,true);txt(value||"-",58,y,10,false);d.setDrawColor(...gray);d.line(10,y+7,200,y+7);y+=15}
+  row("Cliente",p.cliente);row("Valor do projeto",dinheiro(p.valor_projeto));row("Carência",p.carencia);row("Banco/Instituição",p.banco);row("Validade",p.validade);
+  y+=5;txt("Opções de parcelamento",14,y,14,true,[0,0,0]);y+=10;
+  d.setFillColor(250,204,21);d.roundedRect(14,y,182,10,2,2,"F");txt("Parcelas",24,y+7,9,true,[0,0,0]);txt("Valor da parcela",75,y+7,9,true,[0,0,0]);txt("Total estimado",135,y+7,9,true,[0,0,0]);y+=16;
+  opcoesDaProposta(p).forEach(o=>{let parcelas=parseInt(o.parcelas||0),valor=parseFloat(String(o.valor||"").replace(/\./g,"").replace(",","."));let total=parcelas&&valor?(parcelas*valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}):"-";txt(`${o.parcelas||"-"}x`,26,y,11,true);txt(dinheiro(o.valor),75,y,11,false);txt(total,135,y,11,false);d.setDrawColor(...gray);d.line(14,y+6,196,y+6);y+=14});
+  y+=6;txt("Observações",14,y,12,true);y+=8;d.setFont("helvetica","normal");d.setFontSize(10);d.text(d.splitTextToSize(p.observacoes||"Os valores estão sujeitos à análise e aprovação da instituição financeira.",182),14,y);
+  d.setDrawColor(...yellow);d.setLineWidth(.45);d.line(10,250,200,250);
+  txt("MF Elétrica e Solar",88,263,10,true,[0,0,0]);txt("Soluções inteligentes em energia",77,269,8,false,[0,0,0]);txt("Documento gerado automaticamente pelo sistema.",126,269,8,false,[0,0,0]);
+  d.save("proposta-financiamento-"+Date.now()+".pdf")
+}
 const filtrados=useMemo(()=>alertas.filter(a=>`${a.cliente} ${a.painel} ${a.situacao}`.toLowerCase().includes(busca.toLowerCase())),[alertas,busca]),pend=alertas.filter(a=>a.status!=="Resolvido").length,res=alertas.filter(a=>a.status==="Resolvido").length;
-const totalAlertas=alertas.length,totalOS=agenda.length,totalRelatorios=relatorios.length;
+const totalAlertas=alertas.length,totalOS=agenda.length,totalRelatorios=relatorios.length,totalPropostas=propostas.length;
 const urgentes=alertas.filter(a=>a.prioridade==="Urgente"||a.prioridade==="Alta").length;
 const painelTop=(()=>{let m={};alertas.forEach(a=>m[a.painel]=(m[a.painel]||0)+1);let e=Object.entries(m).sort((a,b)=>b[1]-a[1])[0];return e?`${e[0]} (${e[1]})`:"Sem dados"})()
 const taxaResolucao=totalAlertas?Math.round((res/totalAlertas)*100):0;
 const agendaHoje=agenda.filter(s=>s.data===new Date().toISOString().slice(0,10)).length;
 const ultimosEventos=[...alertas.slice(0,3).map(a=>({tipo:"Alerta",titulo:a.cliente,desc:a.situacao,status:a.status})),...agenda.slice(0,3).map(s=>({tipo:"Agenda",titulo:s.local,desc:s.servico,status:s.status})),...relatorios.slice(0,3).map(r=>({tipo:"Relatório",titulo:r.cliente,desc:r.atividade,status:r.status}))].slice(0,6);
 if(osPublicoId)return <PublicOS os={osPublica} loading={carregandoOs} onPdf={pdf} osNumero={osNumero}/>;
-return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={atualizarManual}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
+return <div className="app"><aside><div className="brand"><img src="/logo.png"/><div><b>MF Elétrica e Solar</b><span>Gestão Técnica</span></div></div><nav>{["dashboard","alertas","clientes","agenda","relatorios","propostas"].map(x=><button key={x} className={aba===x?"active":""} onClick={()=>setAba(x)}>{x[0].toUpperCase()+x.slice(1)}</button>)}</nav><div className="db">🟡 <div><b>Banco online</b><span>Supabase conectado</span></div></div></aside><main><section className="hero"><div><small>⚡ Sistema operacional premium</small><h1>MF Elétrica e Solar</h1><p>Controle de alertas, clientes, agenda técnica e relatórios com banco de dados online.</p></div><button onClick={atualizarManual}>↻ Atualizar</button></section>{msg&&<div className="msg">{msg}</div>}
 {aba==="dashboard"&&<>
 <section className="dashHero">
   <div>
@@ -115,7 +143,7 @@ return <div className="app"><aside><div className="brand"><img src="/logo.png"/>
 </section>
 <section className="grid">
   <Panel title="Ocorrências recentes">{alertas.slice(0,5).map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.status}`}/>)}</Panel>
-  <Panel title="Resumo da operação"><div className="miniStats"><p><b>{clientes.length}</b> clientes cadastrados</p><p><b>{totalAlertas}</b> alertas totais</p><p><b>{totalRelatorios}</b> relatórios emitidos</p></div></Panel>
+  <Panel title="Resumo da operação"><div className="miniStats"><p><b>{clientes.length}</b> clientes cadastrados</p><p><b>{totalAlertas}</b> alertas totais</p><p><b>{totalRelatorios}</b> relatórios emitidos</p><p><b>{totalPropostas}</b> propostas comerciais</p></div></Panel>
 </section>
 </>}
 {aba==="alertas"&&<Area><Form title={edit?.tabela==="alertas"?"Editar alerta":"Novo alerta"} edit={edit?.tabela==="alertas"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("alertas",alerta,()=>setAlerta(VA))}}><Campo l="Cliente" v={alerta.cliente} s={v=>setAlerta({...alerta,cliente:v})}/><Select l="Painel" v={alerta.painel} o={PAINEIS} s={v=>setAlerta({...alerta,painel:v})}/><Texto l="Situação" v={alerta.situacao} s={v=>setAlerta({...alerta,situacao:v})}/><Select l="Prioridade" v={alerta.prioridade} o={PRIOR} s={v=>setAlerta({...alerta,prioridade:v})}/><Select l="Status" v={alerta.status} o={STATUS} s={v=>setAlerta({...alerta,status:v})}/><Campo l="Responsável" v={alerta.responsavel} s={v=>setAlerta({...alerta,responsavel:v})}/><Texto l="Observação" v={alerta.observacao} s={v=>setAlerta({...alerta,observacao:v})}/></Form><Panel title="Alertas registrados"><input placeholder="Buscar..." value={busca} onChange={e=>setBusca(e.target.value)}/>{filtrados.map(a=><Item key={a.id} x={a} title={a.cliente} text={a.situacao} sub={`${a.painel} • ${a.prioridade} • ${a.status}`} extra={<><select value={a.status} onChange={e=>stat(a.id,e.target.value)}>{STATUS.map(s=><option key={s}>{s}</option>)}</select><button onClick={()=>pdf("Alerta Técnico",a)}>PDF</button><button onClick={()=>editar("alertas",a)}>Editar</button><button className="danger" onClick={()=>del("alertas",a.id)}>Excluir</button></>}/>)}</Panel></Area>}
@@ -140,7 +168,23 @@ return <div className="app"><aside><div className="brand"><img src="/logo.png"/>
     <button className="danger" onClick={()=>del("agenda",s.id)}>Excluir</button>
   </div>
 </div>)}</Panel></Area>}
-{aba==="relatorios"&&<Area><Form title={edit?.tabela==="relatorios"?"Editar relatório":"Novo relatório"} edit={edit?.tabela==="relatorios"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("relatorios",rel,()=>setRel(VR))}}><Campo l="Dia" type="date" v={rel.dia} s={v=>setRel({...rel,dia:v})}/><Campo l="Cliente" v={rel.cliente} s={v=>setRel({...rel,cliente:v})}/><Texto l="Atividade realizada" v={rel.atividade} s={v=>setRel({...rel,atividade:v})}/><Texto l="Resultado" v={rel.resultado} s={v=>setRel({...rel,resultado:v})}/><Campo l="Responsável" v={rel.responsavel} s={v=>setRel({...rel,responsavel:v})}/><Campo l="Status" v={rel.status} s={v=>setRel({...rel,status:v})}/></Form><Panel title="Relatórios">{relatorios.map(r=><Item key={r.id} x={r} title={r.cliente} text={r.atividade} sub={`${r.dia} • ${r.status}`} extra={<><button onClick={()=>pdf("Relatório Técnico",r)}>PDF</button><button onClick={()=>editar("relatorios",r)}>Editar</button><button className="danger" onClick={()=>del("relatorios",r.id)}>Excluir</button></>}/>)}</Panel></Area>}</main></div>}
+{aba==="relatorios"&&<Area><Form title={edit?.tabela==="relatorios"?"Editar relatório":"Novo relatório"} edit={edit?.tabela==="relatorios"} cancel={cancelar} file={setArq} submit={e=>{e.preventDefault();salvar("relatorios",rel,()=>setRel(VR))}}><Campo l="Dia" type="date" v={rel.dia} s={v=>setRel({...rel,dia:v})}/><Campo l="Cliente" v={rel.cliente} s={v=>setRel({...rel,cliente:v})}/><Texto l="Atividade realizada" v={rel.atividade} s={v=>setRel({...rel,atividade:v})}/><Texto l="Resultado" v={rel.resultado} s={v=>setRel({...rel,resultado:v})}/><Campo l="Responsável" v={rel.responsavel} s={v=>setRel({...rel,responsavel:v})}/><Campo l="Status" v={rel.status} s={v=>setRel({...rel,status:v})}/></Form><Panel title="Relatórios">{relatorios.map(r=><Item key={r.id} x={r} title={r.cliente} text={r.atividade} sub={`${r.dia} • ${r.status}`} extra={<><button onClick={()=>pdf("Relatório Técnico",r)}>PDF</button><button onClick={()=>editar("relatorios",r)}>Editar</button><button className="danger" onClick={()=>del("relatorios",r.id)}>Excluir</button></>}/>)}</Panel></Area>}
+{aba==="propostas"&&<Area>
+<Form title={edit?.tabela==="propostas"?"Editar proposta":"Nova proposta de financiamento"} edit={edit?.tabela==="propostas"} cancel={cancelar} noFile submit={e=>{e.preventDefault();salvar("propostas",proposta,()=>setProposta(VP))}}>
+  <Campo l="Cliente" v={proposta.cliente} s={v=>setProposta({...proposta,cliente:v})}/>
+  <Campo l="Valor do projeto" v={proposta.valor_projeto} s={v=>setProposta({...proposta,valor_projeto:v})}/>
+  <Campo l="Carência" v={proposta.carencia} s={v=>setProposta({...proposta,carencia:v})}/>
+  <Campo l="Banco/Instituição" v={proposta.banco} s={v=>setProposta({...proposta,banco:v})}/>
+  <Campo l="Validade da proposta" type="date" v={proposta.validade} s={v=>setProposta({...proposta,validade:v})}/>
+  <div className="proposalOptions"><span>Opções de parcelamento</span>{(proposta.opcoes||[]).map((o,i)=><div className="proposalOption" key={i}><input placeholder="Parcelas. Ex: 48" value={o.parcelas||""} onChange={e=>setOpcao(i,"parcelas",e.target.value)}/><input placeholder="Valor. Ex: 576,13" value={o.valor||""} onChange={e=>setOpcao(i,"valor",e.target.value)}/><button type="button" onClick={()=>removeOpcao(i)}>Remover</button></div>)}<button type="button" onClick={addOpcao}>+ Adicionar opção</button></div>
+  <Texto l="Observações" v={proposta.observacoes} s={v=>setProposta({...proposta,observacoes:v})}/>
+</Form>
+<Panel title="Propostas cadastradas">
+  {propostas.map(p=><div className="proposalCard" key={p.id}><div><b>{p.cliente}</b><p>Projeto: {dinheiro(p.valor_projeto)} • Carência: {p.carencia||"-"}</p><small>{opcoesDaProposta(p).map(o=>`${o.parcelas}x de ${dinheiro(o.valor)}`).join(" • ")}</small></div><div className="actions"><button onClick={()=>pdfProposta(p)}>PDF Proposta</button><button onClick={()=>editar("propostas",p)}>Editar</button><button className="danger" onClick={()=>del("propostas",p.id)}>Excluir</button></div></div>)}
+  {propostas.length===0&&<div className="empty">Nenhuma proposta cadastrada ainda.</div>}
+</Panel>
+</Area>}
+</main></div>}
 function Card(p){return <div className="card"><p>{p.t}</p><h2>{p.v}</h2><span>{p.d}</span></div>}
 function Panel({title,children}){return <div className="panel"><h2>{title}</h2>{children}</div>}
 function Area({children}){return <section className="area">{children}</section>}
