@@ -1,7 +1,7 @@
 import React,{useEffect,useMemo,useState}from"react";import ReactDOM from"react-dom/client";import{jsPDF}from"jspdf";import QRCode from"qrcode";import{supabase}from"./supabase";import"./style.css";
 const PAINEIS=["SOLARMAN","SOLIS","GOODWE","RENAC","ELEKEEPER","AUXSOL"],STATUS=["Pendente","Em análise","Acompanhar","Resolvido"],PRIOR=["Baixa","Média","Alta","Urgente"];
 const STATUS_OS=["Agendado","Em andamento","Aguardando cliente","Finalizado"];
-const VP={cliente:"",valor_projeto:"",carencia:"3 meses",banco:"",validade:"",observacoes:"",opcoes:[{parcelas:"48",valor:""},{parcelas:"60",valor:""},{parcelas:"72",valor:""}]};
+const VP={cliente:"",valor_projeto:"",carencia:"3 meses",banco:"",validade:"",primeiro_pagamento:"",observacoes:"",opcoes:[{parcelas:"48",valor:""},{parcelas:"60",valor:""},{parcelas:"72",valor:""}]};
 const VA={cliente:"",painel:"SOLARMAN",situacao:"",prioridade:"Média",status:"Pendente",responsavel:"",observacao:"",arquivo_url:""},VC={nome:"",contato:"",cidade:"",painel:"SOLARMAN",potencia:"",status:"Normal"},VG={data:"",horario:"",local:"",servico:"",equipe:"",status:"Agendado",tipo_os:"Manutenção",diagnostico:"",solucao:"",assinatura_nome:"",assinatura_url:"",arquivo_url:""},VR={dia:"",cliente:"",atividade:"",resultado:"",responsavel:"",status:"Bem-sucedido",arquivo_url:""};
 function App(){const osPublicoId=new URLSearchParams(window.location.search).get("os");const[osPublica,setOsPublica]=useState(null),[carregandoOs,setCarregandoOs]=useState(false);const[aba,setAba]=useState("dashboard"),[alertas,setAlertas]=useState([]),[clientes,setClientes]=useState([]),[agenda,setAgenda]=useState([]),[relatorios,setRelatorios]=useState([]),[propostas,setPropostas]=useState([]),[busca,setBusca]=useState(""),[msg,setMsg]=useState(""),[arq,setArq]=useState(null),[assinatura,setAssinatura]=useState(""),[edit,setEdit]=useState(null),[alerta,setAlerta]=useState(VA),[cliente,setCliente]=useState(VC),[serv,setServ]=useState(VG),[rel,setRel]=useState(VR),[proposta,setProposta]=useState(VP);
 async function carregar(){let[a,c,g,r,p]=await Promise.all([supabase.from("alertas").select("*").order("created_at",{ascending:false}),supabase.from("clientes").select("*").order("created_at",{ascending:false}),supabase.from("agenda").select("*").order("data",{ascending:true}),supabase.from("relatorios").select("*").order("created_at",{ascending:false}),supabase.from("propostas").select("*").order("created_at",{ascending:false})]);if(a.error||c.error||g.error||r.error||p.error)setMsg("Erro ao carregar dados.");else{setAlertas(a.data||[]);setClientes(c.data||[]);setAgenda(g.data||[]);setRelatorios(r.data||[]);setPropostas(p.data||[]);setMsg("")}}
@@ -80,10 +80,10 @@ async function pdfProposta(p){
   d.setDrawColor(...yellow);d.setLineWidth(.5);d.line(10,70,200,70);
   let y=85;
   function row(label,value){txt(label+":",14,y,10,true);txt(value||"-",58,y,10,false);d.setDrawColor(...gray);d.line(10,y+7,200,y+7);y+=15}
-  row("Cliente",p.cliente);row("Valor do projeto",dinheiro(p.valor_projeto));row("Carência",p.carencia);row("Banco/Instituição",p.banco);row("Validade",p.validade);
+  row("Cliente",p.cliente);row("Valor do projeto",dinheiro(p.valor_projeto));row("Carência",p.carencia);row("Banco/Instituição",p.banco);row("Validade",p.validade);row("Primeiro pagamento",p.primeiro_pagamento);
   y+=5;txt("Opções de parcelamento",14,y,14,true,[0,0,0]);y+=10;
-  d.setFillColor(250,204,21);d.roundedRect(14,y,182,10,2,2,"F");txt("Parcelas",24,y+7,9,true,[0,0,0]);txt("Valor da parcela",75,y+7,9,true,[0,0,0]);txt("Total estimado",135,y+7,9,true,[0,0,0]);y+=16;
-  opcoesDaProposta(p).forEach(o=>{let parcelas=parseInt(o.parcelas||0),valor=parseFloat(String(o.valor||"").replace(/\./g,"").replace(",","."));let total=parcelas&&valor?(parcelas*valor).toLocaleString("pt-BR",{style:"currency",currency:"BRL"}):"-";txt(`${o.parcelas||"-"}x`,26,y,11,true);txt(dinheiro(o.valor),75,y,11,false);txt(total,135,y,11,false);d.setDrawColor(...gray);d.line(14,y+6,196,y+6);y+=14});
+  d.setFillColor(250,204,21);d.roundedRect(14,y,182,10,2,2,"F");txt("Parcelas",34,y+7,9,true,[0,0,0]);txt("Valor da parcela",112,y+7,9,true,[0,0,0]);y+=16;
+  opcoesDaProposta(p).forEach(o=>{txt(`${o.parcelas||"-"}x`,38,y,11,true);txt(dinheiro(o.valor),112,y,11,false);d.setDrawColor(...gray);d.line(14,y+6,196,y+6);y+=14});
   y+=6;txt("Observações",14,y,12,true);y+=8;d.setFont("helvetica","normal");d.setFontSize(10);d.text(d.splitTextToSize(p.observacoes||"Os valores estão sujeitos à análise e aprovação da instituição financeira.",182),14,y);
   d.setDrawColor(...yellow);d.setLineWidth(.45);d.line(10,250,200,250);
   txt("MF Elétrica e Solar",88,263,10,true,[0,0,0]);txt("Soluções inteligentes em energia",77,269,8,false,[0,0,0]);txt("Documento gerado automaticamente pelo sistema.",126,269,8,false,[0,0,0]);
@@ -175,12 +175,12 @@ return <div className="app"><aside><div className="brand"><img src="/logo.png"/>
   <Campo l="Valor do projeto" v={proposta.valor_projeto} s={v=>setProposta({...proposta,valor_projeto:v})}/>
   <Campo l="Carência" v={proposta.carencia} s={v=>setProposta({...proposta,carencia:v})}/>
   <Campo l="Banco/Instituição" v={proposta.banco} s={v=>setProposta({...proposta,banco:v})}/>
-  <Campo l="Validade da proposta" type="date" v={proposta.validade} s={v=>setProposta({...proposta,validade:v})}/>
+  <Campo l="Validade da proposta" type="date" v={proposta.validade} s={v=>setProposta({...proposta,validade:v})}/><Campo l="Data do primeiro pagamento" type="date" v={proposta.primeiro_pagamento} s={v=>setProposta({...proposta,primeiro_pagamento:v})}/>
   <div className="proposalOptions"><span>Opções de parcelamento</span>{(proposta.opcoes||[]).map((o,i)=><div className="proposalOption" key={i}><input placeholder="Parcelas. Ex: 48" value={o.parcelas||""} onChange={e=>setOpcao(i,"parcelas",e.target.value)}/><input placeholder="Valor. Ex: 576,13" value={o.valor||""} onChange={e=>setOpcao(i,"valor",e.target.value)}/><button type="button" onClick={()=>removeOpcao(i)}>Remover</button></div>)}<button type="button" onClick={addOpcao}>+ Adicionar opção</button></div>
   <Texto l="Observações" v={proposta.observacoes} s={v=>setProposta({...proposta,observacoes:v})}/>
 </Form>
 <Panel title="Propostas cadastradas">
-  {propostas.map(p=><div className="proposalCard" key={p.id}><div><b>{p.cliente}</b><p>Projeto: {dinheiro(p.valor_projeto)} • Carência: {p.carencia||"-"}</p><small>{opcoesDaProposta(p).map(o=>`${o.parcelas}x de ${dinheiro(o.valor)}`).join(" • ")}</small></div><div className="actions"><button onClick={()=>pdfProposta(p)}>PDF Proposta</button><button onClick={()=>editar("propostas",p)}>Editar</button><button className="danger" onClick={()=>del("propostas",p.id)}>Excluir</button></div></div>)}
+  {propostas.map(p=><div className="proposalCard" key={p.id}><div><b>{p.cliente}</b><p>Projeto: {dinheiro(p.valor_projeto)} • Carência: {p.carencia||"-"} • 1º pagamento: {p.primeiro_pagamento||"-"}</p><small>{opcoesDaProposta(p).map(o=>`${o.parcelas}x de ${dinheiro(o.valor)}`).join(" • ")}</small></div><div className="actions"><button onClick={()=>pdfProposta(p)}>PDF Proposta</button><button onClick={()=>editar("propostas",p)}>Editar</button><button className="danger" onClick={()=>del("propostas",p.id)}>Excluir</button></div></div>)}
   {propostas.length===0&&<div className="empty">Nenhuma proposta cadastrada ainda.</div>}
 </Panel>
 </Area>}
